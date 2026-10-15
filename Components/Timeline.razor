@@ -1,0 +1,44 @@
+@using RentLog.Models
+
+<ol class="issue-timeline" aria-label="Issue history">
+    @foreach (var item in Events.OrderBy(entry => entry.Timestamp))
+    {
+        <li class="timeline-entry" @key="item.Id">
+            <span class="timeline-marker" aria-hidden="true"></span>
+            <div class="timeline-content">
+                <div class="timeline-heading">
+                    <strong>@EventLabel(item)</strong>
+                    @if (item.NewStatus is not null)
+                    {
+                        <StatusBadge Status="@item.NewStatus.Value" />
+                    }
+                </div>
+                <p class="timeline-description">@item.Description</p>
+                <p class="timeline-meta">
+                    <span>@item.AuthorName · @item.AuthorRole</span>
+                    <time datetime="@item.Timestamp.ToString("O")">@item.Timestamp.ToLocalTime().ToString("dd MMM yyyy, HH:mm")</time>
+                </p>
+            </div>
+        </li>
+    }
+</ol>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<IssueEvent> Events { get; set; } = [];
+
+    private static string EventLabel(IssueEvent item) => item.EventType switch
+    {
+        "StatusChange" => item.NewStatus is null ? "Update" : $"Status changed to {FormatStatus(item.NewStatus.Value)}",
+        "Comment" => "Comment",
+        "MediaUpload" => "Evidence uploaded",
+        _ => item.EventType
+    };
+
+    private static string FormatStatus(Status status) => status switch
+    {
+        Status.InProgress => "In progress",
+        Status.AwaitingConfirmation => "Awaiting confirmation",
+        _ => status.ToString()
+    };
+}

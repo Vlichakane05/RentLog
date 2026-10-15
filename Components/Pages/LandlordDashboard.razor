@@ -1,0 +1,31 @@
+@page "/landlord"
+@layout LandlordLayout
+@inject IAuthService AuthService
+
+<PageTitle>Landlord dashboard | Rent Log</PageTitle>
+
+<section class="dashboard-welcome">
+    <p class="eyebrow">LANDLORD SPACE</p>
+    <h1>Welcome, @_userName</h1>
+    <p class="text-secondary">A clear view of your properties, maintenance and rent ledger.</p>
+</section>
+
+<section class="card dashboard-card">
+    <h2>Your portfolio</h2>
+    <p class="text-secondary">Your properties and incoming issue updates will appear here once your account is connected.</p>
+</section>
+
+@code {
+    private string _userName = "Landlord";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await AuthService.GetCurrentUserAsync();
+        if (user is null)
+        {
+            throw new InvalidOperationException("The landlord dashboard requires an authenticated user.");
+        }
+
+        _userName = user.Name;
+    }
+}

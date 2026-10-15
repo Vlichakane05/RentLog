@@ -1,0 +1,123 @@
+@page "/tenant"
+@layout TenantLayout
+@inject IAuthService AuthService
+@inject IIssueService IssueService
+@inject IRentService RentService
+@inject ILogger<TenantDashboard> Logger
+@inject NavigationManager Navigation
+
+<PageTitle>Tenant home | Rent Log</PageTitle>
+
+@if (_isLoading)
+{
+    <section aria-label="Loading your rental information" role="status">
+        <LoadingSkeleton ShowCard="true" />
+        <LoadingSkeleton Lines="4" />
+    </section>
+}
+else if (_errorMessage is not null)
+{
+    <div class="alert alert-danger" role="alert">@_errorMessage</div>
+}
+else
+{
+    <section class="dashboard-welcome">
+        <p class="eyebrow">TENANT SPACE</p>
+        <h1>Welcome, @_userName</h1>
+        <p class="text-secondary">Your rent records and maintenance updates, all in one place.</p>
+    </section>
+
+    <section class="rent-summary card" aria-labelledby="rent-summary-title">
+        <div class="rent-summary-top">
+            <div>
+                <p class="eyebrow">RENT STATUS</p>
+                <h2 id="rent-summary-title">@(_currentRent is null ? "No rent record yet" : _currentRent.Period.ToString("MMMM yyyy"))</h2>
+            </div>
+            @if (_currentRent is not null)
+            {
+                <RentStatusBadge Status="@_currentRent.Status" />
+            }
+        </div>
+        @if (_currentRent is not null)
+        {
+            <p class="rent-amount">@FormatCurrency(_currentRent.Amount)</p>
+            <p class="rent-due">Due @FormatDate(_currentRent.DueDate)</p>
+        }
+        else
+        {
+            <p class="text-secondary">Your rent status will appear here once your tenancy is linked.</p>
+        }
+        <a class="btn btn-secondary" href="/tenant/history">View rent history</a>
+    </section>
+
+    <section class="tenant-issues" aria-labelledby="tenant-issues-title">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">MAINTENANCE</p>
+                <h2 id="tenant-issues-title">My issues</h2>
+            </div>
+            <a class="btn btn-primary report-issue-link" href="/tenant/issues/new">Report an issue</a>
+        </div>
+        @if (_issues.Count == 0)
+        {
+            <EmptyState Icon="🛠️" Title="No issues reported" Message="If something needs attention, report it and keep the updates together.">
+                <Action>
+                    <a class="btn btn-primary" href="/tenant/issues/new">Report an issue</a>
+                </Action>
+            </EmptyState>
+        }
+        else
+        {
+            <div class="tenant-issue-list">
+                @foreach (var issue in _issues)
+                {
+                    <IssueCard @key="issue.Id" Title="@issue.Title" Unit="@issue.Unit" Severity="@issue.Severity" Status="@issue.Status" TimeLogged="@issue.CreatedAt">
+                        <ActionButton>
+                            <a class="btn btn-secondary issue-detail-link" href="@($"/tenant/issues/{issue.Id}")">View issue</a>
+                        </ActionButton>
+                    </IssueCard>
+                }
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private string _userName = string.Empty;
+    private List<Issue> _issues = [];
+    private RentEntry? _currentRent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var user = await AuthService.GetCurrentUserAsync();
+            if (user is null || user.Role != UserRole.Tenant)
+            {
+                Navigation.NavigateTo("/login", replace: true);
+                return;
+            }
+
+            _userName = user.Name;
+            var issueTask = IssueService.GetTenantIssuesAsync(user.Id);
+            var rentTask = RentService.GetRentHistoryAsync(user.Id);
+            await Task.WhenAll(issueTask, rentTask);
+            _issues = (await issueTask).ToList();
+            _currentRent = (await rentTask).FirstOrDefault();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load tenant home.");
+            _errorMessage = "We couldn't load your rental information. Please try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private static string FormatCurrency(decimal amount) => $"R {amount.ToString("N2", CultureInfo.GetCultureInfo("en-US"))}";
+    private static string FormatDate(DateOnly date) => date.ToDateTime(TimeOnly.MinValue).ToString("dd MMM yyyy", CultureInfo.GetCultureInfo("en-ZA"));
+}

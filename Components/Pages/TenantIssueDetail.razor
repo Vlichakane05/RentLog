@@ -1,0 +1,255 @@
+@page "/tenant/issues/{IssueId}"
+@layout TenantLayout
+@inject IAuthService AuthService
+@inject IIssueService IssueService
+@inject ILogger<TenantIssueDetail> Logger
+@inject NavigationManager Navigation
+
+<PageTitle>@(_issue?.Title ?? "Issue details") | Rent Log</PageTitle>
+
+<div class="tenant-page issue-detail-page">
+    <a class="back-link" href="/tenant">← Back to my issues</a>
+    @if (_isLoading)
+    {
+        <p role="status" class="text-secondary">Loading issue details...</p>
+        <LoadingSkeleton ShowCard="true" />
+        <LoadingSkeleton Lines="4" />
+    }
+    else if (_errorMessage is not null)
+    {
+        <div class="alert alert-danger" role="alert">@_errorMessage</div>
+    }
+    else if (_issue is not null)
+    {
+        <header class="issue-detail-heading">
+            <p class="eyebrow">UNIT @_issue.Unit · REPORTED @_issue.CreatedAt.ToLocalTime().ToString("dd MMM yyyy")</p>
+            <h1>@_issue.Title</h1>
+            <div class="detail-badges">
+                <SeverityBadge Severity="@_issue.Severity" />
+                <StatusBadge Status="@_issue.Status" />
+            </div>
+        </header>
+
+        @if (_issue.Status == Status.AwaitingConfirmation)
+        {
+            <section class="resolution-actions card" aria-labelledby="resolution-heading">
+                <h2 id="resolution-heading">Has this issue been fixed?</h2>
+                <p class="text-secondary">Review the update below, then confirm the repair or dispute the resolution.</p>
+                <div class="resolution-buttons">
+                    <button type="button" class="btn btn-primary" @onclick="ConfirmResolutionAsync" disabled="@_isSaving">Confirm resolved</button>
+                    <button type="button" class="btn btn-secondary" @onclick="() => _showDisputeForm = !_showDisputeForm" disabled="@_isSaving">Dispute resolution</button>
+                </div>
+                @if (_showDisputeForm)
+                {
+                    <EditForm Model="_disputeForm" OnValidSubmit="SubmitDisputeAsync" class="comment-form">
+                        <DataAnnotationsValidator />
+                        <div class="form-field">
+                            <label class="form-label" for="dispute-reason">What still needs attention?</label>
+                            <InputTextArea id="dispute-reason" class="input description-input" @bind-Value="_disputeForm.Reason" rows="3" maxlength="2000" />
+                            <ValidationMessage For="@(() => _disputeForm.Reason)" />
+                        </div>
+                        <button type="submit" class="btn btn-primary" disabled="@_isSaving">Submit dispute</button>
+                    </EditForm>
+                }
+            </section>
+        }
+        else if (_issue.Status == Status.Disputed)
+        {
+            <section class="resolution-actions card">
+                <h2>Resolution is disputed</h2>
+                <p class="text-secondary">Continue the discussion below. If the issue has now been fixed, you can agree to resolve it.</p>
+                <button type="button" class="btn btn-primary" @onclick="ConfirmResolutionAsync" disabled="@_isSaving">Agree &amp; resolve</button>
+            </section>
+        }
+        else if (_issue.Status == Status.Resolved)
+        {
+            <div class="alert alert-info resolved-note" role="status">This issue is resolved. Its history is kept here for your records.</div>
+        }
+
+        <section class="card detail-section" aria-labelledby="timeline-heading">
+            <h2 id="timeline-heading">Issue history</h2>
+            <Timeline Events="@_issue.Events" />
+        </section>
+
+        <section class="card detail-section" aria-labelledby="media-heading">
+            <h2 id="media-heading">Photos and videos</h2>
+            <MediaGallery MediaItems="@GetMediaItems()" />
+        </section>
+
+        @if (_issue.Status != Status.Resolved)
+        {
+            <section class="card detail-section" aria-labelledby="comment-heading">
+                <h2 id="comment-heading">Add a comment</h2>
+                <EditForm Model="_commentForm" OnValidSubmit="SubmitCommentAsync" class="comment-form">
+                    <DataAnnotationsValidator />
+                    <div class="form-field">
+                        <label class="form-label" for="comment">Your comment</label>
+                        <InputTextArea id="comment" class="input description-input" @bind-Value="_commentForm.Comment" rows="3" maxlength="2000" placeholder="Add an update or ask a question..." />
+                        <ValidationMessage For="@(() => _commentForm.Comment)" />
+                    </div>
+                    <button type="submit" class="btn btn-primary" disabled="@_isSaving">Post comment</button>
+                </EditForm>
+            </section>
+        }
+        @if (_actionError is not null)
+        {
+            <div class="alert alert-danger action-error" role="alert">@_actionError</div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string IssueId { get; set; } = string.Empty;
+
+    private AuthUser? _tenant;
+    private Issue? _issue;
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _showDisputeForm;
+    private string? _errorMessage;
+    private string? _actionError;
+    private readonly CommentForm _commentForm = new();
+    private readonly DisputeForm _disputeForm = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        try
+        {
+            _tenant = await AuthService.GetCurrentUserAsync();
+            if (_tenant is null || _tenant.Role != UserRole.Tenant)
+            {
+                Navigation.NavigateTo("/login", replace: true);
+                return;
+            }
+
+            _issue = await IssueService.GetTenantIssueAsync(_tenant.Id, IssueId);
+            if (_issue is null)
+            {
+                _errorMessage = "This issue could not be found in your rental history.";
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load issue {IssueId} for tenant.", IssueId);
+            _errorMessage = "We couldn't load this issue. Please try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SubmitCommentAsync()
+    {
+        if (_tenant is null || _issue is null)
+        {
+            _actionError = "Your session could not be verified. Sign in again before commenting.";
+            return;
+        }
+
+        await SaveActionAsync(() => IssueService.AddCommentAsync(_tenant, _issue.Id, _commentForm.Comment));
+        if (_actionError is null)
+        {
+            _commentForm.Comment = string.Empty;
+        }
+    }
+
+    private async Task ConfirmResolutionAsync()
+    {
+        if (_tenant is null || _issue is null)
+        {
+            _actionError = "Your session could not be verified. Sign in again before confirming.";
+            return;
+        }
+
+        await SaveActionAsync(() => IssueService.ConfirmResolutionAsync(_tenant, _issue.Id));
+    }
+
+    private async Task SubmitDisputeAsync()
+    {
+        if (_tenant is null || _issue is null)
+        {
+            _actionError = "Your session could not be verified. Sign in again before disputing.";
+            return;
+        }
+
+        await SaveActionAsync(() => IssueService.DisputeResolutionAsync(_tenant, _issue.Id, _disputeForm.Reason));
+        if (_actionError is null)
+        {
+            _showDisputeForm = false;
+            _disputeForm.Reason = string.Empty;
+        }
+    }
+
+    private async Task SaveActionAsync(Func<Task<Issue?>> action)
+    {
+        if (_isSaving)
+        {
+            return;
+        }
+
+        _isSaving = true;
+        _actionError = null;
+        try
+        {
+            var updatedIssue = await action();
+            if (updatedIssue is null)
+            {
+                _actionError = "That update could not be applied. Refresh the issue and try again.";
+                return;
+            }
+
+            _issue = updatedIssue;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to update issue {IssueId}.", IssueId);
+            _actionError = "Your update couldn't be saved. Please try again.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private List<MediaFile> GetMediaItems()
+    {
+        return _issue?.Events
+            .SelectMany(item => item.MediaUrls.Select(url => new MediaFile
+            {
+                Id = $"{item.Id}-{url}",
+                FileName = Path.GetFileName(url),
+                MimeType = GetMimeType(url),
+                Base64Data = url,
+                ThumbnailBase64 = url,
+                AltText = item.Description
+            }))
+            .ToList() ?? [];
+    }
+
+    private static string GetMimeType(string url) => Path.GetExtension(url).ToLowerInvariant() switch
+    {
+        ".png" => "image/png",
+        ".heic" => "image/heic",
+        ".mp4" => "video/mp4",
+        ".mov" => "video/quicktime",
+        _ => "image/jpeg"
+    };
+
+    private sealed class CommentForm
+    {
+        [Required(ErrorMessage = "Write a comment before posting.")]
+        [StringLength(2000, MinimumLength = 2, ErrorMessage = "Your comment must be between 2 and 2,000 characters.")]
+        public string Comment { get; set; } = string.Empty;
+    }
+
+    private sealed class DisputeForm
+    {
+        [Required(ErrorMessage = "Explain what still needs attention.")]
+        [StringLength(2000, MinimumLength = 5, ErrorMessage = "Please provide at least 5 characters.")]
+        public string Reason { get; set; } = string.Empty;
+    }
+}

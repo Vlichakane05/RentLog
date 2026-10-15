@@ -1,8 +1,8 @@
 @inherits LayoutComponentBase
 @inject NavigationManager Navigation
-@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IAuthService AuthService
 @inject RentLogAuthStateProvider RentLogAuthStateProvider
+@implements IDisposable
 
 <div class="tenant-layout">
 	<div class="layout-header">
@@ -27,21 +27,21 @@
 	</div>
 
 	<nav class="bottom-nav" aria-label="Main navigation">
-		<a href="/tenant" class="nav-item @(IsActive("/tenant") ? "active" : "")" title="Issues">
+		<a href="/tenant" class="nav-item @(IsActive("/tenant") ? "active" : "")" aria-current="@(IsActive("/tenant") ? "page" : null)" title="Issues">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 				<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
 				<polyline points="9 22 9 12 15 12 15 22" />
 			</svg>
 			<span>Issues</span>
 		</a>
-		<a href="/tenant/history" class="nav-item @(IsActive("/tenant/history") ? "active" : "")" title="History">
+		<a href="/tenant/history" class="nav-item @(IsActive("/tenant/history") ? "active" : "")" aria-current="@(IsActive("/tenant/history") ? "page" : null)" title="History">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 				<circle cx="12" cy="12" r="10" />
 				<polyline points="12 6 12 12 16 14" />
 			</svg>
 			<span>History</span>
 		</a>
-		<a href="/tenant/profile" class="nav-item @(IsActive("/tenant/profile") ? "active" : "")" title="Profile">
+		<a href="/tenant/profile" class="nav-item @(IsActive("/tenant/profile") ? "active" : "")" aria-current="@(IsActive("/tenant/profile") ? "page" : null)" title="Profile">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 				<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
 				<circle cx="12" cy="7" r="4" />
@@ -68,7 +68,21 @@
 
 	private bool IsActive(string path)
 	{
-		return _currentPath?.Contains(path, StringComparison.OrdinalIgnoreCase) ?? false;
+		var currentPath = GetCurrentPath();
+		var normalizedPath = path.Trim('/');
+		if (string.Equals(currentPath, normalizedPath, StringComparison.OrdinalIgnoreCase))
+		{
+			return true;
+		}
+
+		if (normalizedPath != "tenant" || !currentPath.StartsWith("tenant/", StringComparison.OrdinalIgnoreCase))
+		{
+			return normalizedPath != "tenant"
+				&& currentPath.StartsWith($"{normalizedPath}/", StringComparison.OrdinalIgnoreCase);
+		}
+
+		return !currentPath.StartsWith("tenant/history", StringComparison.OrdinalIgnoreCase)
+			&& !currentPath.StartsWith("tenant/profile", StringComparison.OrdinalIgnoreCase);
 	}
 
 	private async Task HandleLogoutAsync()
@@ -76,6 +90,11 @@
 		await AuthService.LogoutAsync();
 		await RentLogAuthStateProvider.LogoutAsync();
 		Navigation.NavigateTo("/login", replace: true);
+	}
+
+	private string GetCurrentPath()
+	{
+		return Navigation.ToBaseRelativePath(_currentPath ?? Navigation.Uri).Split('?')[0].TrimEnd('/');
 	}
 
 	public void Dispose()

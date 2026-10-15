@@ -6,8 +6,8 @@ public class MockAuthService : IAuthService
 {
     private AuthUser? _currentUser;
 
-    // Test users
-    private static readonly Dictionary<string, (string PasswordHash, AuthUser User)> Users = new()
+    // Demo credentials are intentionally simple; replace this mock before production.
+    private static readonly Dictionary<string, (string Password, AuthUser User)> Users = new(StringComparer.OrdinalIgnoreCase)
     {
         {
             "tenant@example.com",
@@ -42,7 +42,7 @@ public class MockAuthService : IAuthService
 
     public Task<AuthUser?> LoginAsync(string email, string password)
     {
-        if (Users.TryGetValue(email, out var userEntry) && userEntry.PasswordHash == password)
+        if (Users.TryGetValue(email.Trim(), out var userEntry) && userEntry.Password == password)
         {
             _currentUser = userEntry.User;
             return Task.FromResult<AuthUser?>(_currentUser);

@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\User\\source\\repos\\RentLog0\\RentLog\\RentLog.csproj": {}
+    "C:\\Users\\User\\RentLog\\RentLog.csproj": {}
   },
   "projects": {
-    "C:\\Users\\User\\source\\repos\\RentLog0\\RentLog\\RentLog.csproj": {
+    "C:\\Users\\User\\RentLog\\RentLog.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\User\\source\\repos\\RentLog0\\RentLog\\RentLog.csproj",
+        "projectUniqueName": "C:\\Users\\User\\RentLog\\RentLog.csproj",
         "projectName": "RentLog",
-        "projectPath": "C:\\Users\\User\\source\\repos\\RentLog0\\RentLog\\RentLog.csproj",
+        "projectPath": "C:\\Users\\User\\RentLog\\RentLog.csproj",
         "packagesPath": "C:\\Users\\User\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\User\\source\\repos\\RentLog0\\RentLog\\obj\\",
+        "outputPath": "C:\\Users\\User\\RentLog\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

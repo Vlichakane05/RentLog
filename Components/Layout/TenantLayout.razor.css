@@ -36,7 +36,7 @@
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-2) var(--space-3);
-    min-height: auto;
+    min-height: var(--touch-target);
     font-size: var(--font-size-sm);
     color: var(--color-text);
     background-color: transparent;
@@ -59,7 +59,7 @@
 .layout-content {
     flex: 1;
     padding: var(--space-4);
-    margin-bottom: var(--touch-target);
+    margin-bottom: calc(5rem + env(safe-area-inset-bottom));
 }
 
 .bottom-nav {
@@ -70,6 +70,7 @@
     display: flex;
     gap: 0;
     padding: 0;
+    padding-bottom: env(safe-area-inset-bottom);
     background-color: var(--color-surface);
     border-top: 1px solid var(--color-border);
     box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
@@ -114,7 +115,9 @@
 
 @media (min-width: 641px) {
     .tenant-layout {
-        grid-template-columns: 240px 1fr;
+        display: grid;
+        grid-template-columns: 240px minmax(0, 1fr);
+        grid-template-rows: auto 1fr;
     }
 
     .layout-header {
@@ -122,14 +125,18 @@
     }
 
     .layout-content {
+        grid-column: 2;
+        grid-row: 2;
         margin-bottom: 0;
     }
 
     .bottom-nav {
         position: static;
+        grid-column: 1;
+        grid-row: 2;
         flex-direction: column;
         width: 240px;
-        height: calc(100vh - var(--topbar-height));
+        height: 100%;
         border-top: none;
         border-left: 1px solid var(--color-border);
         box-shadow: none;

@@ -1,8 +1,8 @@
 @inherits LayoutComponentBase
 @inject NavigationManager Navigation
-@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IAuthService AuthService
 @inject RentLogAuthStateProvider RentLogAuthStateProvider
+@implements IDisposable
 
 <div class="landlord-layout">
 	<div class="layout-header">
@@ -88,7 +88,10 @@
 
 	private bool IsActive(string path)
 	{
-		return _currentPath?.Contains(path, StringComparison.OrdinalIgnoreCase) ?? false;
+		var currentPath = GetCurrentPath();
+		var normalizedPath = path.Trim('/');
+		return string.Equals(currentPath, normalizedPath, StringComparison.OrdinalIgnoreCase)
+			|| (normalizedPath != "landlord" && currentPath.StartsWith($"{normalizedPath}/", StringComparison.OrdinalIgnoreCase));
 	}
 
 	private async Task HandleLogoutAsync()
@@ -96,6 +99,11 @@
 		await AuthService.LogoutAsync();
 		await RentLogAuthStateProvider.LogoutAsync();
 		Navigation.NavigateTo("/login", replace: true);
+	}
+
+	private string GetCurrentPath()
+	{
+		return Navigation.ToBaseRelativePath(_currentPath ?? Navigation.Uri).Split('?')[0].TrimEnd('/');
 	}
 
 	public void Dispose()

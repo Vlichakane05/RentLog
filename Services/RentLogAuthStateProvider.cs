@@ -36,13 +36,16 @@ public class RentLogAuthStateProvider : AuthenticationStateProvider
         return new AuthenticationState(principal);
     }
 
-    public async Task LoginAsync(AuthUser user)
+    public Task LoginAsync(AuthUser user)
     {
+        ArgumentNullException.ThrowIfNull(user);
         NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+        return Task.CompletedTask;
     }
 
-    public async Task LogoutAsync()
+    public Task LogoutAsync()
     {
         NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+        return Task.CompletedTask;
     }
 }

@@ -6,13 +6,18 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+    .AddInteractiveServerComponents()
+    .AddHubOptions(options => options.MaximumReceiveMessageSize = 16 * 1024 * 1024);
 
 // Add authentication services
 builder.Services.AddScoped<IAuthService, MockAuthService>();
+builder.Services.AddScoped<IIssueService, MockIssueService>();
+builder.Services.AddScoped<IRentService, MockRentService>();
+builder.Services.AddScoped<IMediaService, MockMediaService>();
 builder.Services.AddScoped<RentLogAuthStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<RentLogAuthStateProvider>());
 builder.Services.AddAuthenticationCore();
+builder.Services.AddAuthorizationCore();
 
 var app = builder.Build();
 
@@ -34,4 +39,3 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
-// hello

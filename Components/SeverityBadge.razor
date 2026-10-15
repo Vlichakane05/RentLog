@@ -1,0 +1,20 @@
+@using RentLog.Models
+
+<span class="badge badge-severity-@Severity.ToString().ToLowerInvariant()">
+    <span aria-hidden="true">@Icon</span>
+    <span>@Severity</span>
+</span>
+
+@code {
+    [Parameter]
+    public Severity Severity { get; set; }
+
+    private string Icon => Severity switch
+    {
+        Severity.Low => "●",
+        Severity.Medium => "▲",
+        Severity.High => "◆",
+        Severity.Emergency => "!",
+        _ => "•"
+    };
+}

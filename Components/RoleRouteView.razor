@@ -1,0 +1,50 @@
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+
+@if (_isCheckingAccess)
+{
+    <p class="route-status" role="status">Checking your access...</p>
+}
+else if (_requiredRole is null)
+{
+    <RouteView RouteData="@RouteData" DefaultLayout="@typeof(MainLayout)" />
+}
+else if (_user?.Identity?.IsAuthenticated != true)
+{
+    <RedirectToLogin />
+}
+else if (!_user.IsInRole(_requiredRole))
+{
+    <RedirectToRoleHome />
+}
+else
+{
+    <RouteView RouteData="@RouteData" DefaultLayout="@typeof(MainLayout)" />
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public RouteData RouteData { get; set; } = default!;
+
+    private bool _isCheckingAccess = true;
+    private string? _requiredRole;
+    private System.Security.Claims.ClaimsPrincipal? _user;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var path = Navigation.ToBaseRelativePath(Navigation.Uri).Split('?')[0].TrimEnd('/');
+        _requiredRole = path.Equals("tenant", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("tenant/", StringComparison.OrdinalIgnoreCase)
+                ? nameof(UserRole.Tenant)
+                : path.Equals("landlord", StringComparison.OrdinalIgnoreCase)
+                    || path.StartsWith("landlord/", StringComparison.OrdinalIgnoreCase)
+                        ? nameof(UserRole.Landlord)
+                        : null;
+
+        _isCheckingAccess = _requiredRole is not null;
+        _user = _requiredRole is null
+            ? null
+            : (await AuthenticationStateProvider.GetAuthenticationStateAsync()).User;
+        _isCheckingAccess = false;
+    }
+}

@@ -1,12 +1,7 @@
 @using RentLog.Services
-@using System.Globalization
-@using System.IO
-
-@*
-MediaUploader component: handles photo and video selection, validation, compression, and upload.
-Supports camera and gallery pickers via file input with accept attribute.
-Shows thumbnails with remove buttons, upload progress, and error messages.
-*@
+@inject IMediaService MediaService
+@inject IJSRuntime JavaScript
+@inject ILogger<MediaUploader> Logger
 
 <div class="media-uploader @CssClass">
 	<!-- Error messages -->
@@ -21,17 +16,18 @@ Shows thumbnails with remove buttons, upload progress, and error messages.
 
 	<!-- File input (camera/gallery) -->
 	<div class="uploader-input-group">
-		<input
-			type="file"
-			id="@InputId"
-			class="uploader-file-input"
-			multiple
-			accept="image/jpeg,image/png,image/heic,video/mp4,video/quicktime"
-			@onchange="OnFilesSelected"
-			disabled="@IsUploading"
-			aria-label="Upload photos or videos" />
+		<div @ref="_filePickerContainer">
+			<InputFile
+				id="@InputId"
+				class="uploader-file-input"
+				multiple
+				accept="image/jpeg,image/png,image/heic,video/mp4,video/quicktime"
+				OnChange="OnFilesSelected"
+				disabled="@IsUploading"
+				aria-label="Upload photos or videos" />
+		</div>
 
-		<label for="@InputId" class="uploader-label">
+		<label for="@InputId" class="uploader-label @(IsUploading ? "disabled" : string.Empty)">
 			<span class="uploader-icon">📸</span>
 			<div class="uploader-text">
 				<span class="uploader-title">@(IsUploading ? "Uploading..." : "Tap to upload")</span>
@@ -86,12 +82,6 @@ Shows thumbnails with remove buttons, upload progress, and error messages.
 					<div class="thumbnail-info">
 						<span class="thumbnail-name">@System.IO.Path.GetFileName(media.FileName)</span>
 						<span class="thumbnail-size">@FormatBytes(media.FileSizeBytes)</span>
-						@if (media.MimeType.StartsWith("image") && ImageCompressionService.EstimateCompressedSize(media.FileSizeBytes) < media.FileSizeBytes)
-						{
-							<span class="thumbnail-compressed">
-								≈ @FormatBytes(ImageCompressionService.EstimateCompressedSize(media.FileSizeBytes))
-							</span>
-						}
 					</div>
 
 					<!-- Upload progress bar -->
@@ -132,17 +122,14 @@ Shows thumbnails with remove buttons, upload progress, and error messages.
 
 @code {
 	/// <summary>
-	/// Media service for upload operations.
-	/// </summary>
-	[CascadingParameter]
-	public IMediaService? MediaService { get; set; }
-
-	/// <summary>
 	/// Callback when media files are uploaded successfully.
 	/// Receives list of uploaded URLs.
 	/// </summary>
 	[Parameter]
 	public EventCallback<List<string>> OnMediaUploaded { get; set; }
+
+	[Parameter]
+	public EventCallback<bool> OnPendingMediaChanged { get; set; }
 
 	/// <summary>
 	/// Optional: callback for real-time progress updates.
@@ -163,154 +150,201 @@ Shows thumbnails with remove buttons, upload progress, and error messages.
 	private int UploadProgress { get; set; }
 	private string CurrentUploadId { get; set; } = string.Empty;
 	private string InputId { get; set; } = $"media-input-{Guid.NewGuid()}";
+	private ElementReference _filePickerContainer;
 
-	private async Task OnFilesSelected(ChangeEventArgs e)
+	private async Task OnFilesSelected(InputFileChangeEventArgs e)
 	{
 		ClearError();
 
-		var files = (e.Value as Microsoft.AspNetCore.Components.Forms.InputFileChangeEventArgs)?.GetMultipleFiles();
-		if (files == null || files.Count == 0)
-			return;
-
-		foreach (var file in files)
+		IReadOnlyList<IBrowserFile> files;
+		try
 		{
-			// Read file bytes
-			using var stream = file.OpenReadStream(maxAllowedSize: 100 * 1024 * 1024);
-			var buffer = new byte[stream.Length];
-			await stream.ReadAsync(buffer);
+			files = e.GetMultipleFiles(7);
+		}
+		catch (InvalidOperationException)
+		{
+			ErrorMessage = "Select no more than 5 photos and 2 videos at a time.";
+			return;
+		}
 
-			var mimeType = file.ContentType.ToLower();
+		for (var fileIndex = 0; fileIndex < files.Count; fileIndex++)
+		{
+			var file = files[fileIndex];
+			var mimeType = file.ContentType.ToLowerInvariant();
 			var isImage = mimeType.StartsWith("image");
 			var isVideo = mimeType.StartsWith("video");
 
-			// Validate
 			if (isImage)
 			{
-				var error = MediaService?.ValidatePhoto(mimeType, file.Size);
+				var error = MediaService.ValidatePhoto(mimeType, file.Size);
 				if (error != null)
 				{
 					ErrorMessage = error;
-					return;
+					break;
 				}
 
 				var photoCount = SelectedMedia.Count(m => m.MimeType.StartsWith("image"));
-				if (photoCount >= 5)
+				if (photoCount >= 5 || files.Count(m => m.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase)) > 5 - photoCount)
 				{
 					ErrorMessage = "Maximum 5 photos allowed.";
-					return;
+					break;
 				}
 			}
 			else if (isVideo)
 			{
-				// For videos, we'll validate duration after attempting to get metadata
-				var error = MediaService?.ValidateVideo(mimeType, file.Size, null);
+				var error = MediaService.ValidateVideo(mimeType, file.Size, null);
 				if (error != null)
 				{
 					ErrorMessage = error;
-					return;
+					break;
 				}
 
 				var videoCount = SelectedMedia.Count(m => m.MimeType.StartsWith("video"));
-				if (videoCount >= 2)
+				if (videoCount >= 2 || files.Count(m => m.ContentType.StartsWith("video", StringComparison.OrdinalIgnoreCase)) > 2 - videoCount)
 				{
 					ErrorMessage = "Maximum 2 videos allowed.";
-					return;
+					break;
 				}
-
-				// Note: Actual video duration detection requires JS interop or metadata parsing.
-				// For now, we set a placeholder duration and recommend JS interop in production.
-				// In a real app, you'd use:
-				// IJSRuntime.InvokeAsync<double>("getVideoDuration", base64);
 			}
 			else
 			{
 				ErrorMessage = "Only photos and videos accepted.";
-				return;
+				break;
 			}
 
-			// Create media file
-			var base64 = Convert.ToBase64String(buffer);
 			var media = new MediaFile
 			{
 				FileName = file.Name,
 				MimeType = mimeType,
 				FileSizeBytes = file.Size,
-				Base64Data = base64,
+				AltText = Path.GetFileNameWithoutExtension(file.Name)
 			};
 
-			// Generate thumbnail
+			if (isVideo)
+			{
+				try
+				{
+					await using var stream = file.OpenReadStream(maxAllowedSize: MediaService.MaxVideoSizeBytes);
+					using var memoryStream = new MemoryStream();
+					await stream.CopyToAsync(memoryStream);
+					media.Base64Data = Convert.ToBase64String(memoryStream.ToArray());
+				}
+				catch (Exception exception) when (exception is IOException or InvalidOperationException)
+				{
+					ErrorMessage = $"Could not read {file.Name}. Please select it again.";
+					break;
+				}
+			}
+
 			if (isImage)
 			{
-				media.ThumbnailBase64 = await CompressImage(base64, 200, 200);
+				try
+				{
+					media.ThumbnailBase64 = await CompressImage(fileIndex, mimeType, 200, 200);
+					media.Base64Data = await CompressImage(fileIndex, mimeType, 1600, 1600);
+					media.FileSizeBytes = (long)(media.Base64Data.Length * 0.75);
+					media.MimeType = mimeType.Equals("image/png", StringComparison.OrdinalIgnoreCase) ? "image/png" : "image/jpeg";
+					media.FileName = Path.ChangeExtension(file.Name, media.MimeType == "image/png" ? ".png" : ".jpg");
+					media.ThumbnailBase64 = $"data:{media.MimeType};base64,{media.ThumbnailBase64}";
+					media.Base64Data = $"data:{media.MimeType};base64,{media.Base64Data}";
+				}
+				catch (JSException)
+				{
+					ErrorMessage = $"Could not process {file.Name} in this browser. Try a JPG or PNG image.";
+					break;
+				}
 			}
 			else if (isVideo)
 			{
-				// For video, we'd normally extract a frame, but for now use a placeholder
-				media.ThumbnailBase64 = ""; // Will be rendered as video icon
-				// Note: Getting video duration requires JS interop or metadata parsing
-				media.DurationSeconds = 15; // Placeholder
+				try
+				{
+					media.DurationSeconds = await JavaScript.InvokeAsync<double>("rentLogMedia.getVideoDurationFromInput", _filePickerContainer, fileIndex);
+				}
+				catch (JSException)
+				{
+					ErrorMessage = $"Could not read the duration of {file.Name}. Try another MP4 or MOV file.";
+					break;
+				}
+
+				var durationError = MediaService.ValidateVideo(mimeType, file.Size, media.DurationSeconds);
+				if (durationError is not null)
+				{
+					ErrorMessage = durationError;
+					break;
+				}
 			}
 
 			SelectedMedia.Add(media);
 		}
+
+		await OnPendingMediaChanged.InvokeAsync(SelectedMedia.Any(media => media.UploadedUrl is null));
 	}
 
-	private void RemoveMedia(string mediaId)
+	private async Task RemoveMedia(string mediaId)
 	{
 		SelectedMedia.RemoveAll(m => m.Id == mediaId);
 		ClearError();
+		UploadedUrls = SelectedMedia
+			.Where(media => media.UploadedUrl is not null)
+			.Select(media => media.UploadedUrl!)
+			.ToList();
+		await OnMediaUploaded.InvokeAsync(UploadedUrls);
+		await OnPendingMediaChanged.InvokeAsync(SelectedMedia.Any(media => media.UploadedUrl is null));
 	}
 
 	private async Task UploadAllMedia()
 	{
-		if (MediaService == null || SelectedMedia.Count == 0)
+		if (SelectedMedia.Count == 0)
 			return;
 
 		IsUploading = true;
-		UploadedUrls.Clear();
-		var uploadedCount = 0;
-
-		foreach (var media in SelectedMedia)
+		ClearError();
+		try
 		{
-			CurrentUploadId = media.Id;
-			var progress = new Progress<int>(p =>
+			foreach (var media in SelectedMedia.Where(media => media.UploadedUrl is null))
 			{
-				UploadProgress = p;
-				OnProgressChanged.InvokeAsync(p);
-			});
-
-			try
-			{
-				var url = await MediaService.UploadAsync(media, progress);
-				if (url != null)
+				CurrentUploadId = media.Id;
+				var progress = new Progress<int>(p =>
 				{
-					media.UploadedUrl = url;
-					UploadedUrls.Add(url);
-					uploadedCount++;
+					UploadProgress = p;
+					OnProgressChanged.InvokeAsync(p);
+				});
+
+				var url = await MediaService.UploadAsync(media, progress);
+				if (url is null)
+				{
+					ErrorMessage = $"Upload failed for {media.FileName}. Check your connection and try again.";
+					break;
 				}
+
+				media.UploadedUrl = url;
 			}
-			catch (Exception ex)
-			{
-				ErrorMessage = $"Upload failed: {ex.Message}";
-			}
+		}
+		catch (Exception exception)
+		{
+			Logger.LogError(exception, "Failed to upload issue evidence.");
+			ErrorMessage = "An upload failed. Check your connection and try again.";
 		}
 
 		IsUploading = false;
 		CurrentUploadId = string.Empty;
 		UploadProgress = 0;
 
-		if (uploadedCount > 0)
+		UploadedUrls = SelectedMedia
+			.Where(media => media.UploadedUrl is not null)
+			.Select(media => media.UploadedUrl!)
+			.ToList();
+		if (UploadedUrls.Count > 0)
 		{
 			await OnMediaUploaded.InvokeAsync(UploadedUrls);
 		}
+
+		await OnPendingMediaChanged.InvokeAsync(SelectedMedia.Any(media => media.UploadedUrl is null));
 	}
 
-	private async Task<string> CompressImage(string base64, int maxWidth, int maxHeight)
+	private async Task<string> CompressImage(int fileIndex, string mimeType, int maxWidth, int maxHeight)
 	{
-		// In a real app, this would use Canvas or a library like ImageSharp
-		// For now, return base64 as-is (no compression on this side)
-		// TODO: Implement actual compression
-		return base64;
+		return await JavaScript.InvokeAsync<string>("rentLogMedia.compressSelectedImage", _filePickerContainer, fileIndex, mimeType, maxWidth, maxHeight);
 	}
 
 	private void ClearError() => ErrorMessage = string.Empty;

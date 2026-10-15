@@ -1,0 +1,27 @@
+@page "/landlord/properties"
+@page "/landlord/issues"
+@page "/landlord/ledger"
+@page "/landlord/profile"
+@layout LandlordLayout
+@inject NavigationManager Navigation
+
+<PageTitle>@Title | Rent Log</PageTitle>
+<RolePlaceholder Title="@Title" Description="@Description" />
+
+@code {
+    private string Title => Navigation.ToBaseRelativePath(Navigation.Uri).Split('/').LastOrDefault()?.ToLowerInvariant() switch
+    {
+        "properties" => "Properties",
+        "issues" => "Maintenance issues",
+        "ledger" => "Rent ledger",
+        _ => "Your profile"
+    };
+
+    private string Description => Title switch
+    {
+        "Properties" => "Your properties and units will be available here.",
+        "Maintenance issues" => "Issues reported by your tenants will be available here.",
+        "Rent ledger" => "Your rent payments and balances will be available here.",
+        _ => "Your account details will be available here."
+    };
+}

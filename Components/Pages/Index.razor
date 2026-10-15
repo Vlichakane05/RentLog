@@ -1,0 +1,20 @@
+@page "/"
+@attribute [AllowAnonymous]
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Rent Log</PageTitle>
+<p class="route-status" role="status">Opening Rent Log...</p>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await AuthService.GetCurrentUserAsync();
+        Navigation.NavigateTo(user?.Role switch
+        {
+            UserRole.Tenant => "/tenant",
+            UserRole.Landlord => "/landlord",
+            _ => "/login"
+        }, replace: true);
+    }
+}

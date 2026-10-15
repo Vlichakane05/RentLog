@@ -1,0 +1,48 @@
+<button class="theme-toggle" type="button" @onclick="ToggleThemeAsync" aria-label="@($"Switch to {NextTheme} theme")" title="@($"Switch to {NextTheme} theme")">
+    @if (_isDark)
+    {
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+        </svg>
+        <span>Light</span>
+    }
+    else
+    {
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z" />
+        </svg>
+        <span>Dark</span>
+    }
+</button>
+
+@code {
+    private bool _isDark;
+    private bool _initialized;
+    private string NextTheme => _isDark ? "light" : "dark";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var theme = await JavaScript.InvokeAsync<string>("rentLogTheme.get");
+            _isDark = theme == "dark";
+            _initialized = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleThemeAsync()
+    {
+        if (!_initialized)
+        {
+            return;
+        }
+
+        _isDark = !_isDark;
+        await JavaScript.InvokeVoidAsync("rentLogTheme.set", _isDark ? "dark" : "light");
+    }
+
+    [Inject]
+    private IJSRuntime JavaScript { get; set; } = default!;
+}
