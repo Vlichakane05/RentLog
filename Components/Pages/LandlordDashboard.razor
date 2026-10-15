@@ -1,31 +1,293 @@
 @page "/landlord"
 @layout LandlordLayout
 @inject IAuthService AuthService
+@inject IIssueService IssueService
+@inject IRentService RentService
+@inject IPropertyService PropertyService
+@inject ILogger<LandlordDashboard> Logger
+@inject NavigationManager Navigation
 
 <PageTitle>Landlord dashboard | Rent Log</PageTitle>
 
-<section class="dashboard-welcome">
-    <p class="eyebrow">LANDLORD SPACE</p>
-    <h1>Welcome, @_userName</h1>
-    <p class="text-secondary">A clear view of your properties, maintenance and rent ledger.</p>
-</section>
+@if (_isLoading)
+{
+    <section class="landlord-dashboard dashboard-loading" role="status" aria-label="Loading landlord dashboard">
+        <LoadingSkeleton ShowCard="true" />
+        <LoadingSkeleton Lines="5" />
+    </section>
+}
+else if (_errorMessage is not null)
+{
+    <div class="alert alert-danger" role="alert">@_errorMessage</div>
+}
+else
+{
+    <div class="landlord-dashboard">
+        <header class="dashboard-heading">
+            <div>
+                <p class="eyebrow">LANDLORD OVERVIEW</p>
+                <h1>Good day, @_landlordName</h1>
+                <p class="text-secondary">Here’s what needs your attention across your properties.</p>
+            </div>
+            <a class="btn btn-primary" href="/landlord/properties">Manage properties</a>
+        </header>
 
-<section class="card dashboard-card">
-    <h2>Your portfolio</h2>
-    <p class="text-secondary">Your properties and incoming issue updates will appear here once your account is connected.</p>
-</section>
+        <section class="kpi-grid" aria-label="Portfolio overview">
+            <KpiCard Label="Rent collected" Value="@FormatCurrency(_collected)" Subtext="@($"{_collectedPercent}% of this month's target · target {FormatCurrency(_rentTarget)}")" Icon="R" />
+            <KpiCard Label="Urgent issues" Value="@_urgentCount.ToString()" Subtext="@($"{_emergencyCount} emergency · action needed")" Icon="!" CssClass="@(_emergencyCount > 0 ? "kpi-emergency" : string.Empty)" />
+            <KpiCard Label="Active jobs" Value="@_activeJobsCount.ToString()" Subtext="Maintenance in progress" Icon="↻" />
+            <KpiCard Label="Occupancy" Value="@($"{_occupiedUnits}/{_totalUnits}")" Subtext="@($"{_occupancyPercent}% of units occupied")" Icon="⌂" />
+        </section>
+
+        @if (_emergencyCount > 0)
+        {
+            <section class="emergency-banner" role="alert" aria-labelledby="emergency-title">
+                <span class="emergency-symbol" aria-hidden="true">!</span>
+                <div>
+                    <p class="eyebrow">IMMEDIATE ACTION REQUIRED</p>
+                    <h2 id="emergency-title">@_emergencyCount emergency issue@(_emergencyCount == 1 ? "" : "s") need attention</h2>
+                    <p>Emergency reports are shown first. Review and respond as soon as possible.</p>
+                </div>
+                <a class="btn emergency-action" href="@($"/landlord/issues/{_emergencyIssues[0].Id}")">Respond now</a>
+            </section>
+        }
+
+        <div class="dashboard-columns">
+            <section class="panel card severe-panel" aria-labelledby="severe-heading">
+                <div class="panel-heading">
+                    <div>
+                        <p class="eyebrow">PRIORITY</p>
+                        <h2 id="severe-heading">Severe issues — action required</h2>
+                    </div>
+                    <a href="/landlord/issues">All issues</a>
+                </div>
+                @if (_urgentIssues.Count == 0)
+                {
+                    <EmptyState Icon="✓" Title="No urgent issues" Message="High-severity and emergency reports will appear here." />
+                }
+                else
+                {
+                    <div class="priority-list">
+                        @foreach (var issue in _urgentIssues)
+                        {
+                            <article class="priority-item @(issue.Severity == Severity.Emergency ? "priority-emergency" : "priority-high")" @key="issue.Id">
+                                <div class="priority-item-heading">
+                                    <SeverityBadge Severity="@issue.Severity" />
+                                    <StatusBadge Status="@issue.Status" />
+                                </div>
+                                <h3><a href="@($"/landlord/issues/{issue.Id}")">@issue.Title</a></h3>
+                                <p>Unit @issue.Unit · @issue.CreatedAt.ToLocalTime().ToString("dd MMM yyyy", _zaCulture)</p>
+                                <a class="priority-action" href="@($"/landlord/issues/{issue.Id}")">Review issue <span aria-hidden="true">→</span></a>
+                            </article>
+                        }
+                    </div>
+                }
+            </section>
+
+            <section class="panel card ledger-panel" aria-labelledby="ledger-heading">
+                <div class="panel-heading">
+                    <div>
+                        <p class="eyebrow">COLLECTIONS</p>
+                        <h2 id="ledger-heading">Rent ledger</h2>
+                    </div>
+                    <a href="/landlord/ledger">Full ledger</a>
+                </div>
+                <div class="ledger-totals">
+                    <div><span>Collected</span><strong>@FormatCurrency(_collected)</strong></div>
+                    <div><span>Overdue</span><strong class="amount-overdue">@FormatCurrency(_overdueAmount)</strong></div>
+                </div>
+                @if (_overdueEntries.Count == 0)
+                {
+                    <EmptyState Icon="✓" Title="No overdue rent" Message="Overdue balances and reminders will appear here." />
+                }
+                else
+                {
+                    <div class="overdue-list">
+                        @foreach (var entry in _overdueEntries.Take(4))
+                        {
+                            <article class="overdue-row" @key="entry.Entry.Id">
+                                <div>
+                                    <strong>@entry.TenantName</strong>
+                                    <span>@entry.PropertyName · Unit @entry.UnitNumber · @entry.Entry.Period.ToString("MMM yyyy", _zaCulture)</span>
+                                    <strong>@FormatCurrency(entry.Entry.Amount)</strong>
+                                </div>
+                                <button type="button" class="btn btn-secondary reminder-button" @onclick="() => SendReminderAsync(entry.Entry)" disabled="@_remindingIds.Contains(entry.Entry.Id)">
+                                    @_remindingIds.Contains(entry.Entry.Id) ? "Sending..." : entry.Entry.ReminderCount > 0 ? "Send again" : "Send reminder"
+                                </button>
+                                @if (entry.Entry.LastReminderAt.HasValue)
+                                {
+                                    <small class="reminder-status" role="status">Last sent @entry.Entry.LastReminderAt.Value.ToLocalTime().ToString("dd MMM yyyy, HH:mm", _zaCulture)</small>
+                                }
+                            </article>
+                        }
+                    </div>
+                }
+                @if (_reminderMessage is not null)
+                {
+                    <p class="reminder-feedback" role="status">@_reminderMessage</p>
+                }
+            </section>
+
+            <section class="panel card jobs-panel" aria-labelledby="jobs-heading">
+                <div class="panel-heading">
+                    <div>
+                        <p class="eyebrow">MAINTENANCE</p>
+                        <h2 id="jobs-heading">Ongoing contractor jobs</h2>
+                    </div>
+                    <a href="/landlord/issues">View issues</a>
+                </div>
+                @if (_jobs.Count == 0)
+                {
+                    <EmptyState Icon="🛠️" Title="No jobs underway" Message="Active contractor work will appear here." />
+                }
+                else
+                {
+                    <div class="job-list">
+                        @foreach (var job in _jobs)
+                        {
+                            <a class="job-row" href="@($"/landlord/issues/{job.IssueId}")" @key="job.Id">
+                                <span class="job-icon" aria-hidden="true">↻</span>
+                                <span class="job-info">
+                                    <strong>@job.Title</strong>
+                                    <span>@job.PropertyName · Unit @job.UnitNumber</span>
+                                    <span>@job.ContractorName · @(job.ScheduledDate?.ToDateTime(TimeOnly.MinValue).ToString("dd MMM yyyy", _zaCulture) ?? "Date pending")</span>
+                                </span>
+                                <span class="job-arrow" aria-hidden="true">→</span>
+                            </a>
+                        }
+                    </div>
+                }
+            </section>
+
+            <section class="panel card quick-actions" aria-labelledby="quick-actions-heading">
+                <div class="panel-heading">
+                    <div>
+                        <p class="eyebrow">SHORTCUTS</p>
+                        <h2 id="quick-actions-heading">Quick actions</h2>
+                    </div>
+                </div>
+                <a class="quick-action" href="/landlord/issues"><span aria-hidden="true">!</span><span>Review maintenance issues</span><span aria-hidden="true">→</span></a>
+                <a class="quick-action" href="/landlord/ledger"><span aria-hidden="true">R</span><span>Open rent ledger</span><span aria-hidden="true">→</span></a>
+                <a class="quick-action" href="/landlord/properties"><span aria-hidden="true">⌂</span><span>View properties and units</span><span aria-hidden="true">→</span></a>
+            </section>
+        </div>
+    </div>
+}
 
 @code {
-    private string _userName = "Landlord";
+    private static readonly CultureInfo _zaCulture = CultureInfo.GetCultureInfo("en-ZA");
+    private static readonly CultureInfo _moneyCulture = CultureInfo.GetCultureInfo("en-US");
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private string? _reminderMessage;
+    private string _landlordName = "Landlord";
+    private List<Issue> _issues = [];
+    private List<RentLedgerRow> _rentRows = [];
+    private List<ContractorJob> _jobs = [];
+    private HashSet<string> _remindingIds = [];
+
+    private List<Issue> _urgentIssues => _issues
+        .Where(issue => issue.Severity is Severity.Emergency or Severity.High && issue.Status != Status.Resolved)
+        .OrderByDescending(issue => issue.Severity)
+        .ThenBy(issue => issue.CreatedAt)
+        .Take(5)
+        .ToList();
+    private List<Issue> _emergencyIssues => _urgentIssues.Where(issue => issue.Severity == Severity.Emergency).ToList();
+    private int _emergencyCount => _issues.Count(issue => issue.Severity == Severity.Emergency && issue.Status != Status.Resolved);
+    private int _urgentCount => _issues.Count(issue => issue.Severity is Severity.Emergency or Severity.High && issue.Status != Status.Resolved);
+    private int _activeJobsCount => _jobs.Count;
+    private int _totalUnits => _properties.SelectMany(property => property.Units).Count();
+    private int _occupiedUnits => _properties.SelectMany(property => property.Units).Count(unit => unit.IsOccupied);
+    private int _occupancyPercent => _totalUnits == 0 ? 0 : (int)Math.Round(100d * _occupiedUnits / _totalUnits);
+    private List<RentalProperty> _properties = [];
+    private decimal _rentTarget => _properties.SelectMany(property => property.Units)
+        .Where(unit => unit.IsOccupied)
+        .Sum(unit => unit.MonthlyRent);
+    private DateOnly _selectedMonth => new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private decimal _collected => _rentRows.Where(row => row.Entry.Period == _selectedMonth && row.Entry.Status == RentPaymentStatus.Paid).Sum(row => row.Entry.Amount);
+    private int _collectedPercent => _rentTarget == 0 ? 100 : (int)Math.Round(100m * _collected / _rentTarget);
+    private decimal _overdueAmount => _overdueEntries.Sum(row => row.Entry.Amount);
+    private List<RentLedgerRow> _overdueEntries => _rentRows.Where(row => row.Entry.Status == RentPaymentStatus.Overdue).OrderByDescending(row => row.Entry.Period).ToList();
 
     protected override async Task OnInitializedAsync()
     {
-        var user = await AuthService.GetCurrentUserAsync();
-        if (user is null)
+        try
         {
-            throw new InvalidOperationException("The landlord dashboard requires an authenticated user.");
+            var landlord = await AuthService.GetCurrentUserAsync();
+            if (landlord is null || landlord.Role != UserRole.Landlord)
+            {
+                Navigation.NavigateTo("/login", replace: true);
+                return;
+            }
+
+            _landlordName = landlord.Name;
+            var issuesTask = IssueService.GetLandlordIssuesAsync(landlord.Id);
+            var rentTask = RentService.GetLandlordRentEntriesAsync(landlord.Id);
+            var propertiesTask = PropertyService.GetPropertiesAsync(landlord.Id);
+            var jobsTask = PropertyService.GetContractorJobsAsync(landlord.Id);
+            await Task.WhenAll(issuesTask, rentTask, propertiesTask, jobsTask);
+            _issues = (await issuesTask).ToList();
+            var rentEntries = await rentTask;
+            _properties = (await propertiesTask).ToList();
+            _jobs = (await jobsTask).ToList();
+
+            var units = _properties.SelectMany(property => property.Units)
+                .Where(unit => !string.IsNullOrWhiteSpace(unit.TenantId))
+                .ToDictionary(unit => unit.TenantId);
+            _rentRows = rentEntries
+                .Where(entry => units.ContainsKey(entry.TenantId))
+                .Select(entry => new RentLedgerRow(entry, units[entry.TenantId].TenantName, units[entry.TenantId].UnitNumber, FindPropertyName(entry.TenantId)))
+                .ToList();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load landlord dashboard.");
+            _errorMessage = "We couldn't load your dashboard. Please refresh and try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SendReminderAsync(RentEntry entry)
+    {
+        var landlord = await AuthService.GetCurrentUserAsync();
+        if (landlord is null || landlord.Role != UserRole.Landlord)
+        {
+            Navigation.NavigateTo("/login", replace: true);
+            return;
         }
 
-        _userName = user.Name;
+        _remindingIds.Add(entry.Id);
+        _reminderMessage = null;
+        try
+        {
+            if (!await RentService.SendReminderAsync(landlord, entry.Id))
+            {
+                _reminderMessage = "A reminder could not be sent for this rent entry.";
+                return;
+            }
+
+            entry.ReminderCount++;
+            entry.LastReminderAt = DateTime.UtcNow;
+            _reminderMessage = $"Reminder recorded for {_rentRows.First(row => row.Entry.Id == entry.Id).TenantName}; no message was sent.";
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to send reminder for rent entry {RentEntryId}.", entry.Id);
+            _reminderMessage = "The reminder could not be sent. Please try again.";
+        }
+        finally
+        {
+            _remindingIds.Remove(entry.Id);
+        }
     }
+
+    private static string FormatCurrency(decimal amount) => $"R {amount.ToString("N2", _moneyCulture)}";
+
+    private string FindPropertyName(string tenantId) => _properties
+        .FirstOrDefault(property => property.Units.Any(unit => unit.TenantId == tenantId))?.Name ?? string.Empty;
+
+    private sealed record RentLedgerRow(RentEntry Entry, string TenantName, string UnitNumber, string PropertyName);
 }

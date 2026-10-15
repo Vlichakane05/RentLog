@@ -35,10 +35,6 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xJbmRleC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/User/RentLog/Components/Pages/LandlordDashboard.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMYW5kbG9yZERhc2hib2FyZC5yYXpvcg==
-build_metadata.AdditionalFiles.CssScope = 
-
 [C:/Users/User/RentLog/Components/Pages/LandlordSections.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMYW5kbG9yZFNlY3Rpb25zLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
@@ -130,6 +126,26 @@ build_metadata.AdditionalFiles.CssScope = b-9063ytfrl5
 [C:/Users/User/RentLog/Components/MediaUploader.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNZWRpYVVwbG9hZGVyLnJhem9y
 build_metadata.AdditionalFiles.CssScope = b-ru4b1do93a
+
+[C:/Users/User/RentLog/Components/Pages/LandlordDashboard.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMYW5kbG9yZERhc2hib2FyZC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = b-68t62lyj05
+
+[C:/Users/User/RentLog/Components/Pages/LandlordIssueDetail.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMYW5kbG9yZElzc3VlRGV0YWlsLnJhem9y
+build_metadata.AdditionalFiles.CssScope = b-n4dutcvfwz
+
+[C:/Users/User/RentLog/Components/Pages/LandlordIssues.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMYW5kbG9yZElzc3Vlcy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = b-xgjkwika1t
+
+[C:/Users/User/RentLog/Components/Pages/LandlordLedger.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMYW5kbG9yZExlZGdlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = b-0d2nu1tcz6
+
+[C:/Users/User/RentLog/Components/Pages/LandlordProperties.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMYW5kbG9yZFByb3BlcnRpZXMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-sx509s3s4r
 
 [C:/Users/User/RentLog/Components/Pages/NewTenantIssue.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xOZXdUZW5hbnRJc3N1ZS5yYXpvcg==

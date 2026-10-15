@@ -1,0 +1,233 @@
+@page "/landlord/ledger"
+@layout LandlordLayout
+@inject IAuthService AuthService
+@inject IRentService RentService
+@inject IPropertyService PropertyService
+@inject ILogger<LandlordLedger> Logger
+@inject NavigationManager Navigation
+
+<PageTitle>Rent ledger | Rent Log</PageTitle>
+
+<div class="landlord-page">
+    <header class="page-heading">
+        <p class="eyebrow">COLLECTIONS</p>
+        <h1>Rent ledger</h1>
+        <p class="text-secondary">Filter payments by month, unit and payment status.</p>
+    </header>
+
+    @if (_isLoading)
+    {
+        <p role="status" class="text-secondary">Loading rent ledger...</p>
+        <LoadingSkeleton Lines="5" />
+    }
+    else if (_errorMessage is not null)
+    {
+        <div class="alert alert-danger" role="alert">@_errorMessage</div>
+    }
+    else if (_rentRows.Count == 0)
+    {
+        <EmptyState Icon="🧾" Title="No rent records" Message="Rent records for your properties will appear here." />
+    }
+    else
+    {
+        <section class="ledger-filters card" aria-label="Filter rent records">
+            <div class="form-field">
+                <label class="form-label" for="ledger-month">Month</label>
+                <select id="ledger-month" class="input" @bind="_selectedMonth">
+                    <option value="">All months</option>
+                    @foreach (var month in _months)
+                    {
+                        <option value="@month.ToString("yyyy-MM", CultureInfo.InvariantCulture)">@month.ToString("MMMM yyyy", _zaCulture)</option>
+                    }
+                </select>
+            </div>
+            <div class="form-field">
+                <label class="form-label" for="ledger-unit">Unit</label>
+                <select id="ledger-unit" class="input" @bind="_selectedUnit">
+                    <option value="">All units</option>
+                    @foreach (var unit in _unitOptions)
+                    {
+                        <option value="@unit.Id">Unit @unit.UnitNumber · @unit.PropertyName</option>
+                    }
+                </select>
+            </div>
+            <div class="form-field">
+                <label class="form-label" for="ledger-status">Status</label>
+                <select id="ledger-status" class="input" @bind="_selectedStatus">
+                    <option value="">All statuses</option>
+                    @foreach (var status in Enum.GetValues<RentPaymentStatus>())
+                    {
+                        <option value="@status.ToString()">@status</option>
+                    }
+                </select>
+            </div>
+            <button type="button" class="btn btn-secondary clear-filters" @onclick="ClearFilters">Clear filters</button>
+        </section>
+
+        <p class="record-count" aria-live="polite">Showing @_filteredRows.Count of @_rentRows.Count rent records</p>
+        @if (_filteredRows.Count == 0)
+        {
+            <EmptyState Icon="⌕" Title="No matching rent records" Message="Try changing or clearing your filters." />
+        }
+        else
+        {
+            <div class="ledger-table-wrap">
+                <table class="ledger-table">
+                    <caption class="visually-hidden">Rent payments by month, tenant, unit, amount and status</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Month</th>
+                            <th scope="col">Tenant</th>
+                            <th scope="col">Unit</th>
+                            <th scope="col">Amount</th>
+                            <th scope="col">Due date</th>
+                            <th scope="col">Paid date</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in _filteredRows)
+                        {
+                            <tr @key="row.Entry.Id">
+                                <td data-label="Month">@row.Entry.Period.ToString("MMMM yyyy", _zaCulture)</td>
+                                <td data-label="Tenant">@row.TenantName</td>
+                                <td data-label="Unit">@row.PropertyName · @row.UnitNumber</td>
+                                <td data-label="Amount">@FormatCurrency(row.Entry.Amount)</td>
+                                <td data-label="Due date">@FormatDate(row.Entry.DueDate)</td>
+                                <td data-label="Paid date">@(row.Entry.PaidDate is { } paidDate ? FormatDate(paidDate) : "—")</td>
+                                <td data-label="Status"><RentStatusBadge Status="@row.Entry.Status" /></td>
+                                <td data-label="Action">
+                                    @if (row.Entry.Status != RentPaymentStatus.Paid)
+                                    {
+                                        <button type="button" class="btn btn-secondary reminder-button" @onclick="() => SendReminderAsync(row)" disabled="@_remindingIds.Contains(row.Entry.Id)">
+                                            @_remindingIds.Contains(row.Entry.Id) ? "Sending..." : row.Entry.ReminderCount > 0 ? "Send again" : "Send reminder"
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-secondary">—</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        @if (_actionMessage is not null)
+        {
+            <p class="action-message" role="status">@_actionMessage</p>
+        }
+    }
+</div>
+
+@code {
+    private static readonly CultureInfo _zaCulture = CultureInfo.GetCultureInfo("en-ZA");
+    private static readonly CultureInfo _moneyCulture = CultureInfo.GetCultureInfo("en-US");
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private string? _actionMessage;
+    private string _selectedMonth = string.Empty;
+    private string _selectedUnit = string.Empty;
+    private string _selectedStatus = string.Empty;
+    private List<RentLedgerRow> _rentRows = [];
+    private List<UnitOption> _unitOptions = [];
+    private HashSet<string> _remindingIds = [];
+    private List<DateOnly> _months => _rentRows.Select(row => row.Entry.Period).Distinct().OrderDescending().ToList();
+    private List<RentLedgerRow> _filteredRows => _rentRows
+        .Where(row => string.IsNullOrEmpty(_selectedMonth) || row.Entry.Period.ToString("yyyy-MM", CultureInfo.InvariantCulture) == _selectedMonth)
+        .Where(row => string.IsNullOrEmpty(_selectedUnit) || row.UnitId == _selectedUnit)
+        .Where(row => string.IsNullOrEmpty(_selectedStatus) || row.Entry.Status.ToString() == _selectedStatus)
+        .OrderByDescending(row => row.Entry.Period)
+        .ThenBy(row => row.PropertyName, StringComparer.OrdinalIgnoreCase)
+        .ThenBy(row => row.UnitNumber, StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var landlord = await AuthService.GetCurrentUserAsync();
+            if (landlord is null || landlord.Role != UserRole.Landlord)
+            {
+                Navigation.NavigateTo("/login", replace: true);
+                return;
+            }
+
+            var entriesTask = RentService.GetLandlordRentEntriesAsync(landlord.Id);
+            var propertiesTask = PropertyService.GetPropertiesAsync(landlord.Id);
+            await Task.WhenAll(entriesTask, propertiesTask);
+
+            var units = (await propertiesTask)
+                .SelectMany(property => property.Units.Select(unit => new UnitOption(unit.Id, unit.UnitNumber, property.Name, unit.TenantId, unit.TenantName)))
+                .ToList();
+            _unitOptions = units.OrderBy(unit => unit.UnitNumber, StringComparer.OrdinalIgnoreCase).ToList();
+            var unitsByTenant = units.Where(unit => !string.IsNullOrWhiteSpace(unit.TenantId)).ToDictionary(unit => unit.TenantId);
+            _rentRows = (await entriesTask)
+                .Where(entry => unitsByTenant.ContainsKey(entry.TenantId))
+                .Select(entry =>
+                {
+                    var unit = unitsByTenant[entry.TenantId];
+                    return new RentLedgerRow(entry, unit.TenantName, unit.UnitNumber, unit.PropertyName, unit.Id);
+                })
+                .ToList();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load landlord rent ledger.");
+            _errorMessage = "We couldn't load the rent ledger. Please try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ClearFilters()
+    {
+        _selectedMonth = string.Empty;
+        _selectedUnit = string.Empty;
+        _selectedStatus = string.Empty;
+    }
+
+    private async Task SendReminderAsync(RentLedgerRow row)
+    {
+        var landlord = await AuthService.GetCurrentUserAsync();
+        if (landlord is null || landlord.Role != UserRole.Landlord)
+        {
+            Navigation.NavigateTo("/login", replace: true);
+            return;
+        }
+
+        _remindingIds.Add(row.Entry.Id);
+        _actionMessage = null;
+        try
+        {
+            if (!await RentService.SendReminderAsync(landlord, row.Entry.Id))
+            {
+                _actionMessage = "A reminder could not be sent for this rent record.";
+                return;
+            }
+
+            row.Entry.ReminderCount++;
+            row.Entry.LastReminderAt = DateTime.UtcNow;
+            _actionMessage = $"Reminder recorded for {row.TenantName} in unit {row.UnitNumber}; no message was sent.";
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to send rent reminder for {RentEntryId}.", row.Entry.Id);
+            _actionMessage = "The reminder could not be sent. Please try again.";
+        }
+        finally
+        {
+            _remindingIds.Remove(row.Entry.Id);
+        }
+    }
+
+    private static string FormatCurrency(decimal amount) => $"R {amount.ToString("N2", _moneyCulture)}";
+    private static string FormatDate(DateOnly date) => date.ToDateTime(TimeOnly.MinValue).ToString("dd MMM yyyy", _zaCulture);
+
+    private sealed record UnitOption(string Id, string UnitNumber, string PropertyName, string TenantId, string TenantName);
+    private sealed record RentLedgerRow(RentEntry Entry, string TenantName, string UnitNumber, string PropertyName, string UnitId);
+}
