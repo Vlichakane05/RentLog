@@ -53,3 +53,5 @@ The application is structured around three core user roles:
    ```bash
    git clone [https://github.com/your-username/your-property-app.git](https://github.com/your-username/your-property-app.git)
    cd your-property-app
+   dotnet build
+   dotnet run
