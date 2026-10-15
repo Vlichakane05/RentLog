@@ -1,4 +1,3 @@
-﻿@inject RentLog.Services.BackendMode BackendMode
 <!DOCTYPE html>
 <html lang="en">
 
@@ -6,10 +5,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
+    <link rel="stylesheet" href="css/tailwind.css" />
     <link rel="stylesheet" href="css/tokens.css" />
     <link rel="stylesheet" href="css/app.css" />
     <link rel="stylesheet" href="@Assets["app.css"]" />
     <link rel="stylesheet" href="@Assets["RentLog.styles.css"]" />
+    <script src="https://unpkg.com/@@tailwindcss/browser@4"></script>
     <script src="js/theme.js"></script>
     <script src="js/media.js"></script>
     <ImportMap />
@@ -17,13 +18,6 @@
 </head>
 
 <body>
-    @if (BackendMode.UsesMockData)
-    {
-        <div class="backend-mode-banner" role="status">
-            <strong>Development demo mode</strong>
-            <span>@BackendMode.SetupMessage</span>
-        </div>
-    }
     <Routes @rendermode="InteractiveServer" />
     <script src="_framework/blazor.web.js"></script>
 </body>

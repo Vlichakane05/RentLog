@@ -1,0 +1,179 @@
+@page "/signup"
+@attribute [AllowAnonymous]
+@inject IAuthService AuthService
+@inject RentLogAuthStateProvider RentLogAuthStateProvider
+@inject NavigationManager Navigation
+
+<PageTitle>Sign Up - RentLog</PageTitle>
+
+<div class="min-h-screen bg-slate-950 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden font-sans">
+    <!-- Ambient glowing background -->
+    <div class="absolute -top-40 -left-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="max-w-md w-full space-y-8 bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl relative z-10">
+        <!-- Header -->
+        <div class="text-center">
+            <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 mb-4">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+            </div>
+            <h2 class="text-2xl font-bold tracking-tight text-white">Create your RentLog account</h2>
+            <p class="mt-2 text-sm text-slate-400">
+                Join our multi-portal property platform as a Tenant or Landlord
+            </p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm flex items-start space-x-2.5">
+                <svg class="w-5 h-5 flex-shrink-0 text-rose-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>@_errorMessage</span>
+            </div>
+        }
+
+        <EditForm Model="@_model" OnValidSubmit="HandleSignUpAsync" class="mt-8 space-y-5">
+            <DataAnnotationsValidator />
+
+            <!-- Role Selection -->
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">Account Role</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" 
+                            @onclick="@(() => _model.Role = "TENANT")"
+                            class="px-4 py-3 rounded-xl border text-sm font-medium transition-all text-center flex flex-col items-center space-y-1 @(_model.Role == "TENANT" ? "bg-indigo-600/20 border-indigo-500 text-white shadow-sm" : "bg-slate-800/60 border-slate-700 text-slate-400 hover:text-slate-200")">
+                        <span class="font-bold">Tenant</span>
+                        <span class="text-xs text-slate-400">Lease & Maintenance</span>
+                    </button>
+                    <button type="button" 
+                            @onclick="@(() => _model.Role = "LANDLORD")"
+                            class="px-4 py-3 rounded-xl border text-sm font-medium transition-all text-center flex flex-col items-center space-y-1 @(_model.Role == "LANDLORD" ? "bg-indigo-600/20 border-indigo-500 text-white shadow-sm" : "bg-slate-800/60 border-slate-700 text-slate-400 hover:text-slate-200")">
+                        <span class="font-bold">Landlord / Owner</span>
+                        <span class="text-xs text-slate-400">Property & Finance</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Full Name -->
+            <div>
+                <label for="fullName" class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Full Name</label>
+                <InputText id="fullName" @bind-Value="_model.FullName" 
+                           placeholder="e.g. Sipho Ndlovu" 
+                           class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors" />
+                <ValidationMessage For="@(() => _model.FullName)" class="text-xs text-rose-400 mt-1" />
+            </div>
+
+            <!-- Email Address -->
+            <div>
+                <label for="email" class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Email Address</label>
+                <InputText id="email" @bind-Value="_model.Email" type="email"
+                           placeholder="you@domain.com" 
+                           class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors" />
+                <ValidationMessage For="@(() => _model.Email)" class="text-xs text-rose-400 mt-1" />
+            </div>
+
+            <!-- Phone Number -->
+            <div>
+                <label for="phone" class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Phone Number</label>
+                <InputText id="phone" @bind-Value="_model.PhoneNumber" type="tel"
+                           placeholder="+27 82 123 4567" 
+                           class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors" />
+                <ValidationMessage For="@(() => _model.PhoneNumber)" class="text-xs text-rose-400 mt-1" />
+            </div>
+
+            <!-- Password -->
+            <div>
+                <label for="password" class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Password</label>
+                <InputText id="password" @bind-Value="_model.Password" type="password"
+                           placeholder="••••••••" 
+                           class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors" />
+                <ValidationMessage For="@(() => _model.Password)" class="text-xs text-rose-400 mt-1" />
+            </div>
+
+            <!-- Confirm Password -->
+            <div>
+                <label for="confirmPassword" class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Confirm Password</label>
+                <InputText id="confirmPassword" @bind-Value="_model.ConfirmPassword" type="password"
+                           placeholder="••••••••" 
+                           class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors" />
+                <ValidationMessage For="@(() => _model.ConfirmPassword)" class="text-xs text-rose-400 mt-1" />
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" disabled="@_isLoading" 
+                    class="w-full mt-2 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-sm font-semibold shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center space-x-2 disabled:opacity-50">
+                @if (_isLoading)
+                {
+                    <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Creating Account...</span>
+                }
+                else
+                {
+                    <span>Register Account</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                }
+            </button>
+        </EditForm>
+
+        <!-- Navigation Links -->
+        <div class="mt-6 pt-6 border-t border-slate-800 text-center space-y-3">
+            <p class="text-sm text-slate-400">
+                Already registered? 
+                <a href="/login" class="font-semibold text-indigo-400 hover:text-indigo-300 ml-1 transition-colors">Sign in here</a>
+            </p>
+            <p class="text-xs text-slate-500">
+                Are you a contractor with a job PIN? 
+                <a href="/contractor/login" class="text-amber-400 hover:text-amber-300 ml-1 font-medium transition-colors">Contractor Login &rarr;</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+@code {
+    private readonly SignUpViewModel _model = new();
+    private bool _isLoading;
+    private string? _errorMessage;
+
+    private async Task HandleSignUpAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var user = await AuthService.SignUpAsync(
+                _model.FullName,
+                _model.Email,
+                _model.PhoneNumber,
+                _model.Role,
+                _model.Password);
+
+            if (user != null)
+            {
+                await RentLogAuthStateProvider.LoginAsync(user);
+                var destination = user.Role == UserRole.Landlord ? "/landlord" : "/tenant";
+                Navigation.NavigateTo(destination, replace: true);
+            }
+            else
+            {
+                _errorMessage = "Unable to complete registration. Please verify details and try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

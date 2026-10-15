@@ -12,93 +12,165 @@ build_property.EntryPointFilePath =
 build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property.RootNamespace = RentLog
 build_property.RootNamespace = RentLog
-build_property.ProjectDir = C:\Users\User\source\repos\RentLog0\RentLog\
+build_property.ProjectDir = C:\Users\Zama\source\repos\RentLog\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.RazorLangVersion = 9.0
 build_property.SupportLocalizedComponentNames = 
 build_property.GenerateRazorMetadataSourceChecksumAttributes = 
-build_property.MSBuildProjectDirectory = C:\Users\User\source\repos\RentLog0\RentLog
+build_property.MSBuildProjectDirectory = C:\Users\Zama\source\repos\RentLog
 build_property._RazorSourceGeneratorDebug = 
 build_property.EffectiveAnalysisLevelStyle = 9.0
 build_property.EnableCodeStyleSeverity = 
 
-[C:/Users/User/source/repos/RentLog0/RentLog/Components/App.razor]
+[C:/Users/Zama/source/repos/RentLog/Components/App.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBcHAucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/User/source/repos/RentLog0/RentLog/Components/Pages/Error.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xFcnJvci5yYXpvcg==
+[C:/Users/Zama/source/repos/RentLog/Components/Pages/ForgotPassword.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xGb3Jnb3RQYXNzd29yZC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/User/source/repos/RentLog0/RentLog/Components/Pages/Home.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xIb21lLnJhem9y
+[C:/Users/Zama/source/repos/RentLog/Components/Pages/Index.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xJbmRleC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/User/source/repos/RentLog0/RentLog/Components/Routes.razor]
+[C:/Users/Zama/source/repos/RentLog/Components/Pages/LandlordSections.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMYW5kbG9yZFNlY3Rpb25zLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Zama/source/repos/RentLog/Components/Pages/Login.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMb2dpbi5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Zama/source/repos/RentLog/Components/Pages/Registration.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xSZWdpc3RyYXRpb24ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Zama/source/repos/RentLog/Components/Pages/TenantSections.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xUZW5hbnRTZWN0aW9ucy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Zama/source/repos/RentLog/Components/RedirectToLogin.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xSZWRpcmVjdFRvTG9naW4ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Zama/source/repos/RentLog/Components/RedirectToRoleHome.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xSZWRpcmVjdFRvUm9sZUhvbWUucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Zama/source/repos/RentLog/Components/RolePlaceholder.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xSb2xlUGxhY2Vob2xkZXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Zama/source/repos/RentLog/Components/RoleRouteView.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xSb2xlUm91dGVWaWV3LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Zama/source/repos/RentLog/Components/Routes.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xSb3V0ZXMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/User/source/repos/RentLog0/RentLog/Components/_Imports.razor]
+[C:/Users/Zama/source/repos/RentLog/Components/SeverityBadge.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xTZXZlcml0eUJhZGdlLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Zama/source/repos/RentLog/Components/StatusBadge.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xTdGF0dXNCYWRnZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Zama/source/repos/RentLog/Components/_Imports.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xfSW1wb3J0cy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/User/source/repos/RentLog0/RentLog/Components/ConfirmDialog.razor]
+[C:/Users/Zama/source/repos/RentLog/Components/AuthPage.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBdXRoUGFnZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = b-tn64col6ke
+
+[C:/Users/Zama/source/repos/RentLog/Components/ConfirmDialog.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xDb25maXJtRGlhbG9nLnJhem9y
 build_metadata.AdditionalFiles.CssScope = b-xrqeu7d9di
 
-[C:/Users/User/source/repos/RentLog0/RentLog/Components/EmptyState.razor]
+[C:/Users/Zama/source/repos/RentLog/Components/EmptyState.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xFbXB0eVN0YXRlLnJhem9y
 build_metadata.AdditionalFiles.CssScope = b-7yjjz8fge1
 
-[C:/Users/User/source/repos/RentLog0/RentLog/Components/IssueCard.razor]
+[C:/Users/Zama/source/repos/RentLog/Components/IssueCard.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xJc3N1ZUNhcmQucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = b-3t9gwp8tgv
 
-[C:/Users/User/source/repos/RentLog0/RentLog/Components/KpiCard.razor]
+[C:/Users/Zama/source/repos/RentLog/Components/KpiCard.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xLcGlDYXJkLnJhem9y
 build_metadata.AdditionalFiles.CssScope = b-hfh11yefi0
 
-[C:/Users/User/source/repos/RentLog0/RentLog/Components/Layout/MainLayout.razor]
+[C:/Users/Zama/source/repos/RentLog/Components/Layout/LandlordLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcTGFuZGxvcmRMYXlvdXQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-eupubin77w
+
+[C:/Users/Zama/source/repos/RentLog/Components/Layout/MainLayout.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcTWFpbkxheW91dC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = b-kugpn5ipu3
 
-[C:/Users/User/source/repos/RentLog0/RentLog/Components/LoadingSkeleton.razor]
+[C:/Users/Zama/source/repos/RentLog/Components/Layout/TenantLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcVGVuYW50TGF5b3V0LnJhem9y
+build_metadata.AdditionalFiles.CssScope = b-6jqbn0y7og
+
+[C:/Users/Zama/source/repos/RentLog/Components/LoadingSkeleton.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMb2FkaW5nU2tlbGV0b24ucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = b-0vs44duwvw
 
-[C:/Users/User/source/repos/RentLog0/RentLog/Components/MediaGallery.razor]
+[C:/Users/Zama/source/repos/RentLog/Components/MediaGallery.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNZWRpYUdhbGxlcnkucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = b-9063ytfrl5
 
-[C:/Users/User/source/repos/RentLog0/RentLog/Components/MediaUploader.razor]
+[C:/Users/Zama/source/repos/RentLog/Components/MediaUploader.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNZWRpYVVwbG9hZGVyLnJhem9y
 build_metadata.AdditionalFiles.CssScope = b-ru4b1do93a
 
-[C:/Users/User/source/repos/RentLog0/RentLog/Components/Pages/Gallery.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xHYWxsZXJ5LnJhem9y
-build_metadata.AdditionalFiles.CssScope = b-xo4mipaywl
+[C:/Users/Zama/source/repos/RentLog/Components/Pages/LandlordDashboard.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMYW5kbG9yZERhc2hib2FyZC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = b-68t62lyj05
 
-[C:/Users/User/source/repos/RentLog0/RentLog/Components/Pages/MediaDemo.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xNZWRpYURlbW8ucmF6b3I=
-build_metadata.AdditionalFiles.CssScope = b-9f0je5wfcr
+[C:/Users/Zama/source/repos/RentLog/Components/Pages/LandlordIssueDetail.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMYW5kbG9yZElzc3VlRGV0YWlsLnJhem9y
+build_metadata.AdditionalFiles.CssScope = b-n4dutcvfwz
 
-[C:/Users/User/source/repos/RentLog0/RentLog/Components/RoleNav.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xSb2xlTmF2LnJhem9y
-build_metadata.AdditionalFiles.CssScope = b-zgingndc4i
+[C:/Users/Zama/source/repos/RentLog/Components/Pages/LandlordIssues.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMYW5kbG9yZElzc3Vlcy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = b-xgjkwika1t
 
-[C:/Users/User/source/repos/RentLog0/RentLog/Components/SeverityBadge.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xTZXZlcml0eUJhZGdlLnJhem9y
-build_metadata.AdditionalFiles.CssScope = b-wf2mwrn58a
+[C:/Users/Zama/source/repos/RentLog/Components/Pages/LandlordLedger.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMYW5kbG9yZExlZGdlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = b-0d2nu1tcz6
 
-[C:/Users/User/source/repos/RentLog0/RentLog/Components/StatusBadge.razor]
-build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xTdGF0dXNCYWRnZS5yYXpvcg==
-build_metadata.AdditionalFiles.CssScope = b-3wm7198puu
+[C:/Users/Zama/source/repos/RentLog/Components/Pages/LandlordProperties.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMYW5kbG9yZFByb3BlcnRpZXMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-sx509s3s4r
 
-[C:/Users/User/source/repos/RentLog0/RentLog/Components/ThemeToggle.razor]
+[C:/Users/Zama/source/repos/RentLog/Components/Pages/NewTenantIssue.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xOZXdUZW5hbnRJc3N1ZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = b-ysx200rgxb
+
+[C:/Users/Zama/source/repos/RentLog/Components/Pages/TenantDashboard.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xUZW5hbnREYXNoYm9hcmQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-1msv9zs7w1
+
+[C:/Users/Zama/source/repos/RentLog/Components/Pages/TenantIssueDetail.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xUZW5hbnRJc3N1ZURldGFpbC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = b-xuynl0rze6
+
+[C:/Users/Zama/source/repos/RentLog/Components/Pages/TenantRentHistory.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xUZW5hbnRSZW50SGlzdG9yeS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = b-qeb4t2m9mc
+
+[C:/Users/Zama/source/repos/RentLog/Components/RentStatusBadge.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xSZW50U3RhdHVzQmFkZ2UucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-y97cbfoh57
+
+[C:/Users/Zama/source/repos/RentLog/Components/ThemeToggle.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUaGVtZVRvZ2dsZS5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = b-jbaui4a2yl
 
-[C:/Users/User/source/repos/RentLog0/RentLog/Components/Timeline.razor]
+[C:/Users/Zama/source/repos/RentLog/Components/Timeline.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xUaW1lbGluZS5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = b-xnr8qw2ecg

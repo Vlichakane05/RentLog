@@ -149,6 +149,21 @@ CREATE TABLE public.contractor_invoices (
   CONSTRAINT contractor_invoices_work_order_id_fkey FOREIGN KEY (work_order_id) REFERENCES public.work_orders(id),
   CONSTRAINT contractor_invoices_contractor_id_fkey FOREIGN KEY (contractor_id) REFERENCES public.contractor_profiles(id)
 );
+CREATE TABLE public.tenancy_invites (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  unit_id uuid NOT NULL,
+  landlord_id uuid NOT NULL,
+  tenant_email text NOT NULL,
+  tenant_id uuid,
+  status text NOT NULL DEFAULT 'PENDING',
+  start_date date NOT NULL,
+  end_date date NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  responded_at timestamp with time zone,
+  CONSTRAINT tenancy_invites_pkey PRIMARY KEY (id),
+  CONSTRAINT tenancy_invites_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES public.units(id),
+  CONSTRAINT tenancy_invites_landlord_id_fkey FOREIGN KEY (landlord_id) REFERENCES public.users(id)
+);
 CREATE TABLE public.inspections (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   tenancy_id uuid NOT NULL,

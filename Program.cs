@@ -4,52 +4,27 @@ using Microsoft.AspNetCore.Components.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var supabaseUrl = builder.Configuration["Supabase:Url"] ?? Environment.GetEnvironmentVariable("SUPABASE_URL");
-var supabaseAnonKey = builder.Configuration["Supabase:AnonKey"] ?? Environment.GetEnvironmentVariable("SUPABASE_ANON_KEY");
-var hasValidSupabaseUrl = Uri.TryCreate(supabaseUrl, UriKind.Absolute, out var parsedSupabaseUrl) &&
-    (parsedSupabaseUrl.Scheme == Uri.UriSchemeHttps ||
-     (builder.Environment.IsDevelopment() && parsedSupabaseUrl.IsLoopback && parsedSupabaseUrl.Scheme == Uri.UriSchemeHttp));
-var hasSupabaseKey = !string.IsNullOrWhiteSpace(supabaseAnonKey);
-var useMockServices = !hasValidSupabaseUrl || !hasSupabaseKey;
-if (useMockServices && !builder.Environment.IsDevelopment())
-{
-    throw new InvalidOperationException("Supabase configuration is required outside Development. Configure Supabase:Url and Supabase:AnonKey using environment variables or a secret store.");
-}
-
-var setupMessage = useMockServices
-    ? "Supabase settings are missing or invalid. Rent Log is running with demo data; configure Supabase:Url and Supabase:AnonKey to use your Supabase project."
-    : null;
-if (useMockServices)
-{
-    Console.WriteLine($"Development mode: {setupMessage}");
-}
+var supabaseUrl = builder.Configuration["Supabase:Url"] ?? "https://lwtunhohgvpvuimwdmja.supabase.co";
+var supabaseAnonKey = builder.Configuration["Supabase:AnonKey"] ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3dHVuaG9oZ3ZwdnVpbXdkbWphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyOTY3NDQsImV4cCI6MjEwNjg3Mjc0NH0.5KvVyw19C0e-B3jye1gSbonvS_-O9DD9BqtpGEGFLc8";
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddHubOptions(options => options.MaximumReceiveMessageSize = 72 * 1024 * 1024);
 
-builder.Services.AddSingleton(new BackendMode(useMockServices, setupMessage));
-if (useMockServices)
-{
-    builder.Services.AddScoped<IAuthService, MockAuthService>();
-    builder.Services.AddScoped<IIssueService, MockIssueService>();
-    builder.Services.AddScoped<IRentService, MockRentService>();
-    builder.Services.AddScoped<IPropertyService, MockPropertyService>();
-    builder.Services.AddScoped<ITenancyService, MockTenancyService>();
-    builder.Services.AddScoped<IMediaService, MockMediaService>();
-}
-else
-{
-    builder.Services.AddScoped(_ => new SupabaseClientProvider(parsedSupabaseUrl!.ToString(), supabaseAnonKey!));
-    builder.Services.AddScoped<IAuthService, SupabaseAuthService>();
-    builder.Services.AddScoped<IIssueService, SupabaseIssueService>();
-    builder.Services.AddScoped<IRentService, SupabaseRentService>();
-    builder.Services.AddScoped<IPropertyService, SupabasePropertyService>();
-    builder.Services.AddScoped<ITenancyService, SupabaseTenancyService>();
-    builder.Services.AddScoped<SupabaseMediaService>();
-    builder.Services.AddScoped<IMediaService>(services => services.GetRequiredService<SupabaseMediaService>());
-}
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton(new BackendMode(false, null));
+
+// Direct live Supabase database and authentication services
+builder.Services.AddScoped(_ => new SupabaseClientProvider(supabaseUrl, supabaseAnonKey));
+builder.Services.AddScoped<IPropertyManagementService, SupabasePropertyManagementService>();
+builder.Services.AddScoped<IAuthService, SupabaseAuthService>();
+builder.Services.AddScoped<IIssueService, SupabaseIssueService>();
+builder.Services.AddScoped<IRentService, SupabaseRentService>();
+builder.Services.AddScoped<IPropertyService, SupabasePropertyService>();
+builder.Services.AddScoped<ITenancyService, SupabaseTenancyService>();
+builder.Services.AddScoped<SupabaseMediaService>();
+builder.Services.AddScoped<IMediaService>(services => services.GetRequiredService<SupabaseMediaService>());
 builder.Services.AddScoped<RentLogAuthStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<RentLogAuthStateProvider>());
 builder.Services.AddAuthenticationCore();

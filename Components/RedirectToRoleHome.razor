@@ -9,7 +9,9 @@
             ? "/tenant"
             : authenticationState.User.IsInRole(nameof(UserRole.Landlord))
                 ? "/landlord"
-                : "/login";
+                : authenticationState.User.IsInRole(nameof(UserRole.Contractor))
+                    ? "/contractor"
+                    : "/login";
 
         Navigation.NavigateTo(destination, replace: true);
     }

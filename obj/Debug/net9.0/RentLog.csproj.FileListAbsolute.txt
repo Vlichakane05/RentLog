@@ -142,3 +142,10 @@ C:\Users\User\RentLog\bin\Debug\net9.0\Websocket.Client.dll
 C:\Users\User\RentLog\obj\Debug\net9.0\RentLog.csproj.AssemblyReference.cache
 C:\Users\User\RentLog\obj\Debug\net9.0\RentLog.csproj.Up2Date
 C:\Users\User\RentLog\obj\Debug\net9.0\compressed\ov6i5hnrd5-{0}-1998gopw79-1998gopw79.gz
+C:\Users\Zama\source\repos\RentLog\obj\Debug\net9.0\rpswa.dswa.cache.json
+C:\Users\Zama\source\repos\RentLog\obj\Debug\net9.0\RentLog.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Zama\source\repos\RentLog\obj\Debug\net9.0\RentLog.AssemblyInfoInputs.cache
+C:\Users\Zama\source\repos\RentLog\obj\Debug\net9.0\RentLog.AssemblyInfo.cs
+C:\Users\Zama\source\repos\RentLog\obj\Debug\net9.0\RentLog.csproj.CoreCompileInputs.cache
+C:\Users\Zama\source\repos\RentLog\obj\Debug\net9.0\RentLog.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\Zama\source\repos\RentLog\obj\Debug\net9.0\RentLog.sourcelink.json
