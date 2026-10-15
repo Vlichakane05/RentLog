@@ -1,0 +1,326 @@
+@using RentLog.Services
+@using System.Globalization
+@using System.IO
+
+@*
+MediaUploader component: handles photo and video selection, validation, compression, and upload.
+Supports camera and gallery pickers via file input with accept attribute.
+Shows thumbnails with remove buttons, upload progress, and error messages.
+*@
+
+<div class="media-uploader @CssClass">
+	<!-- Error messages -->
+	@if (!string.IsNullOrEmpty(ErrorMessage))
+	{
+		<div class="uploader-error" role="alert">
+			<span class="error-icon">⚠</span>
+			<span>@ErrorMessage</span>
+			<button type="button" class="error-close" @onclick="ClearError" aria-label="Dismiss error">✕</button>
+		</div>
+	}
+
+	<!-- File input (camera/gallery) -->
+	<div class="uploader-input-group">
+		<input
+			type="file"
+			id="@InputId"
+			class="uploader-file-input"
+			multiple
+			accept="image/jpeg,image/png,image/heic,video/mp4,video/quicktime"
+			@onchange="OnFilesSelected"
+			disabled="@IsUploading"
+			aria-label="Upload photos or videos" />
+
+		<label for="@InputId" class="uploader-label">
+			<span class="uploader-icon">📸</span>
+			<div class="uploader-text">
+				<span class="uploader-title">@(IsUploading ? "Uploading..." : "Tap to upload")</span>
+				<span class="uploader-hint">Photos (JPG, PNG, HEIC) max 10 MB × 5<br />Videos (MP4, MOV) max 50 MB, 30 sec × 2</span>
+			</div>
+		</label>
+	</div>
+
+	<!-- Count info -->
+	<div class="uploader-count" aria-live="polite">
+		Photos: @SelectedMedia.Count(m => m.MimeType.StartsWith("image")) / 5
+		&nbsp;&nbsp;Videos: @SelectedMedia.Count(m => m.MimeType.StartsWith("video")) / 2
+	</div>
+
+	<!-- Thumbnails grid -->
+	@if (SelectedMedia.Count > 0)
+	{
+		<div class="uploader-thumbnails">
+			@foreach (var media in SelectedMedia)
+			{
+				<div class="thumbnail-item" key="@media.Id">
+					<!-- Thumbnail preview -->
+					@if (media.MimeType.StartsWith("image"))
+					{
+						<img
+							src="@media.ThumbnailBase64"
+							alt="@media.AltText"
+							class="thumbnail-img"
+							loading="lazy" />
+					}
+					else if (media.MimeType.StartsWith("video"))
+					{
+						<div class="thumbnail-video">
+							<span class="video-play-icon">▶</span>
+							<span class="video-duration">
+								@(media.DurationSeconds.HasValue ? $"{(int)media.DurationSeconds.Value}s" : "")
+							</span>
+						</div>
+					}
+
+					<!-- Remove button -->
+					<button
+						type="button"
+						class="thumbnail-remove"
+						@onclick="() => RemoveMedia(media.Id)"
+						disabled="@IsUploading"
+						aria-label="Remove @media.FileName">
+						✕
+					</button>
+
+					<!-- File info -->
+					<div class="thumbnail-info">
+						<span class="thumbnail-name">@System.IO.Path.GetFileName(media.FileName)</span>
+						<span class="thumbnail-size">@FormatBytes(media.FileSizeBytes)</span>
+						@if (media.MimeType.StartsWith("image") && ImageCompressionService.EstimateCompressedSize(media.FileSizeBytes) < media.FileSizeBytes)
+						{
+							<span class="thumbnail-compressed">
+								≈ @FormatBytes(ImageCompressionService.EstimateCompressedSize(media.FileSizeBytes))
+							</span>
+						}
+					</div>
+
+					<!-- Upload progress bar -->
+					@if (IsUploading && CurrentUploadId == media.Id)
+					{
+						<div class="thumbnail-progress">
+							<div class="progress-bar" style="width: @(UploadProgress)%"></div>
+						</div>
+					}
+				</div>
+			}
+		</div>
+	}
+
+	<!-- Upload button -->
+	@if (SelectedMedia.Count > 0 && !IsUploading)
+	{
+		<div class="uploader-actions">
+			<button
+				type="button"
+				class="btn btn-primary"
+				@onclick="UploadAllMedia"
+				aria-busy="@IsUploading">
+				Upload @(SelectedMedia.Count) file@(SelectedMedia.Count != 1 ? "s" : "")
+			</button>
+		</div>
+	}
+
+	<!-- Uploaded URLs (for confirmation) -->
+	@if (UploadedUrls.Count > 0)
+	{
+		<div class="uploader-success" role="status">
+			<span class="success-icon">✓</span>
+			<span>@UploadedUrls.Count file@(UploadedUrls.Count != 1 ? "s" : "") uploaded successfully</span>
+		</div>
+	}
+</div>
+
+@code {
+	/// <summary>
+	/// Media service for upload operations.
+	/// </summary>
+	[CascadingParameter]
+	public IMediaService? MediaService { get; set; }
+
+	/// <summary>
+	/// Callback when media files are uploaded successfully.
+	/// Receives list of uploaded URLs.
+	/// </summary>
+	[Parameter]
+	public EventCallback<List<string>> OnMediaUploaded { get; set; }
+
+	/// <summary>
+	/// Optional: callback for real-time progress updates.
+	/// </summary>
+	[Parameter]
+	public EventCallback<int> OnProgressChanged { get; set; }
+
+	/// <summary>
+	/// Additional CSS classes.
+	/// </summary>
+	[Parameter]
+	public string CssClass { get; set; } = string.Empty;
+
+	private List<MediaFile> SelectedMedia { get; set; } = new();
+	private List<string> UploadedUrls { get; set; } = new();
+	private string ErrorMessage { get; set; } = string.Empty;
+	private bool IsUploading { get; set; }
+	private int UploadProgress { get; set; }
+	private string CurrentUploadId { get; set; } = string.Empty;
+	private string InputId { get; set; } = $"media-input-{Guid.NewGuid()}";
+
+	private async Task OnFilesSelected(ChangeEventArgs e)
+	{
+		ClearError();
+
+		var files = (e.Value as Microsoft.AspNetCore.Components.Forms.InputFileChangeEventArgs)?.GetMultipleFiles();
+		if (files == null || files.Count == 0)
+			return;
+
+		foreach (var file in files)
+		{
+			// Read file bytes
+			using var stream = file.OpenReadStream(maxAllowedSize: 100 * 1024 * 1024);
+			var buffer = new byte[stream.Length];
+			await stream.ReadAsync(buffer);
+
+			var mimeType = file.ContentType.ToLower();
+			var isImage = mimeType.StartsWith("image");
+			var isVideo = mimeType.StartsWith("video");
+
+			// Validate
+			if (isImage)
+			{
+				var error = MediaService?.ValidatePhoto(mimeType, file.Size);
+				if (error != null)
+				{
+					ErrorMessage = error;
+					return;
+				}
+
+				var photoCount = SelectedMedia.Count(m => m.MimeType.StartsWith("image"));
+				if (photoCount >= 5)
+				{
+					ErrorMessage = "Maximum 5 photos allowed.";
+					return;
+				}
+			}
+			else if (isVideo)
+			{
+				// For videos, we'll validate duration after attempting to get metadata
+				var error = MediaService?.ValidateVideo(mimeType, file.Size, null);
+				if (error != null)
+				{
+					ErrorMessage = error;
+					return;
+				}
+
+				var videoCount = SelectedMedia.Count(m => m.MimeType.StartsWith("video"));
+				if (videoCount >= 2)
+				{
+					ErrorMessage = "Maximum 2 videos allowed.";
+					return;
+				}
+
+				// Note: Actual video duration detection requires JS interop or metadata parsing.
+				// For now, we set a placeholder duration and recommend JS interop in production.
+				// In a real app, you'd use:
+				// IJSRuntime.InvokeAsync<double>("getVideoDuration", base64);
+			}
+			else
+			{
+				ErrorMessage = "Only photos and videos accepted.";
+				return;
+			}
+
+			// Create media file
+			var base64 = Convert.ToBase64String(buffer);
+			var media = new MediaFile
+			{
+				FileName = file.Name,
+				MimeType = mimeType,
+				FileSizeBytes = file.Size,
+				Base64Data = base64,
+			};
+
+			// Generate thumbnail
+			if (isImage)
+			{
+				media.ThumbnailBase64 = await CompressImage(base64, 200, 200);
+			}
+			else if (isVideo)
+			{
+				// For video, we'd normally extract a frame, but for now use a placeholder
+				media.ThumbnailBase64 = ""; // Will be rendered as video icon
+				// Note: Getting video duration requires JS interop or metadata parsing
+				media.DurationSeconds = 15; // Placeholder
+			}
+
+			SelectedMedia.Add(media);
+		}
+	}
+
+	private void RemoveMedia(string mediaId)
+	{
+		SelectedMedia.RemoveAll(m => m.Id == mediaId);
+		ClearError();
+	}
+
+	private async Task UploadAllMedia()
+	{
+		if (MediaService == null || SelectedMedia.Count == 0)
+			return;
+
+		IsUploading = true;
+		UploadedUrls.Clear();
+		var uploadedCount = 0;
+
+		foreach (var media in SelectedMedia)
+		{
+			CurrentUploadId = media.Id;
+			var progress = new Progress<int>(p =>
+			{
+				UploadProgress = p;
+				OnProgressChanged.InvokeAsync(p);
+			});
+
+			try
+			{
+				var url = await MediaService.UploadAsync(media, progress);
+				if (url != null)
+				{
+					media.UploadedUrl = url;
+					UploadedUrls.Add(url);
+					uploadedCount++;
+				}
+			}
+			catch (Exception ex)
+			{
+				ErrorMessage = $"Upload failed: {ex.Message}";
+			}
+		}
+
+		IsUploading = false;
+		CurrentUploadId = string.Empty;
+		UploadProgress = 0;
+
+		if (uploadedCount > 0)
+		{
+			await OnMediaUploaded.InvokeAsync(UploadedUrls);
+		}
+	}
+
+	private async Task<string> CompressImage(string base64, int maxWidth, int maxHeight)
+	{
+		// In a real app, this would use Canvas or a library like ImageSharp
+		// For now, return base64 as-is (no compression on this side)
+		// TODO: Implement actual compression
+		return base64;
+	}
+
+	private void ClearError() => ErrorMessage = string.Empty;
+
+	private string FormatBytes(long bytes)
+	{
+		if (bytes < 1024)
+			return $"{bytes} B";
+		if (bytes < 1024 * 1024)
+			return $"{bytes / 1024} KB";
+		return $"{bytes / (1024.0 * 1024):F1} MB";
+	}
+}

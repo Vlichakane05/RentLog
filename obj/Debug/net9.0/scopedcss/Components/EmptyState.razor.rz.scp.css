@@ -1,0 +1,51 @@
+/* EmptyState component styles */
+
+.empty-state[b-7yjjz8fge1] {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    padding: var(--space-12) var(--space-4);
+    min-height: 20rem;
+    text-align: center;
+    background-color: var(--color-surface-alt);
+    border: 2px dashed var(--color-border);
+    border-radius: var(--radius-lg);
+}
+
+.empty-state-icon[b-7yjjz8fge1] {
+    font-size: 4rem;
+    line-height: 1;
+}
+
+.empty-state-title[b-7yjjz8fge1] {
+    margin: 0;
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+}
+
+.empty-state-message[b-7yjjz8fge1] {
+    margin: 0;
+    font-size: var(--font-size-md);
+    color: var(--color-text-secondary);
+    max-width: 20rem;
+    line-height: var(--line-height-base);
+}
+
+.empty-state-action[b-7yjjz8fge1] {
+    margin-top: var(--space-2);
+}
+
+/* Mobile: adjust padding on small screens */
+@media (max-width: 23rem) {
+    .empty-state[b-7yjjz8fge1] {
+        min-height: 15rem;
+        padding: var(--space-6) var(--space-3);
+    }
+
+    .empty-state-icon[b-7yjjz8fge1] {
+        font-size: 3rem;
+    }
+}

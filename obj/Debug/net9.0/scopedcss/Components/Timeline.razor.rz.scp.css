@@ -1,0 +1,179 @@
+/* Timeline component styles */
+
+.timeline[b-xnr8qw2ecg] {
+    position: relative;
+    padding: 0;
+}
+
+.timeline-track[b-xnr8qw2ecg] {
+    position: absolute;
+    left: 0.625rem;
+    top: 3rem;
+    bottom: 0;
+    width: 1px;
+    background-color: var(--color-border);
+}
+
+.timeline-event[b-xnr8qw2ecg] {
+    display: flex;
+    gap: var(--space-4);
+    margin-bottom: var(--space-6);
+    position: relative;
+}
+
+.timeline-node[b-xnr8qw2ecg] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    background-color: var(--color-surface);
+    border-radius: 50%;
+    border: 2px solid var(--color-border);
+    flex-shrink: 0;
+    z-index: 1;
+    margin-top: 0.25rem;
+}
+
+.timeline-icon[b-xnr8qw2ecg] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+}
+
+.timeline-content[b-xnr8qw2ecg] {
+    flex: 1;
+    padding: var(--space-3);
+    background-color: var(--color-surface-alt);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+}
+
+.timeline-header[b-xnr8qw2ecg] {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-4);
+    margin-bottom: var(--space-2);
+}
+
+.timeline-meta[b-xnr8qw2ecg] {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+}
+
+.timeline-author[b-xnr8qw2ecg] {
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+}
+
+.timeline-role[b-xnr8qw2ecg] {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.timeline-time[b-xnr8qw2ecg] {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+}
+
+.timeline-description[b-xnr8qw2ecg] {
+    margin: 0 0 var(--space-3);
+    font-size: var(--font-size-sm);
+    color: var(--color-text);
+    line-height: var(--line-height-base);
+}
+
+.timeline-label[b-xnr8qw2ecg] {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: block;
+    margin-bottom: var(--space-2);
+}
+
+.timeline-status[b-xnr8qw2ecg] {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+    padding: var(--space-2);
+    background-color: var(--color-primary-subtle-bg);
+    border-radius: var(--radius-sm);
+}
+
+.timeline-media[b-xnr8qw2ecg] {
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+}
+
+.timeline-media-list[b-xnr8qw2ecg] {
+    list-style: none;
+    margin: var(--space-2) 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.timeline-media-list li[b-xnr8qw2ecg] {
+    margin: 0;
+}
+
+.timeline-media-link[b-xnr8qw2ecg] {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-primary);
+    text-decoration: none;
+    font-size: var(--font-size-sm);
+    transition: color var(--transition-fast);
+    word-break: break-all;
+}
+
+.timeline-media-link:hover[b-xnr8qw2ecg] {
+    color: var(--color-primary-hover);
+    text-decoration: underline;
+}
+
+.timeline-media-link:focus[b-xnr8qw2ecg] {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
+/* First event: adjust top margin for track alignment */
+.timeline-event:first-child[b-xnr8qw2ecg] {
+    margin-top: 0;
+}
+
+/* Last event: no bottom margin */
+.timeline-event:last-child[b-xnr8qw2ecg] {
+    margin-bottom: 0;
+}
+
+/* Mobile: stack metadata vertically */
+@media (max-width: 23rem) {
+    .timeline-header[b-xnr8qw2ecg] {
+        flex-direction: column;
+        gap: var(--space-2);
+    }
+
+    .timeline-meta[b-xnr8qw2ecg] {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .timeline-time[b-xnr8qw2ecg] {
+        font-size: var(--font-size-xs);
+    }
+}
