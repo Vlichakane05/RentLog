@@ -1,0 +1,73 @@
+.tenant-page[b-qeb4t2m9mc] {
+    width: min(100%, 48rem);
+    margin: 0 auto;
+}
+
+.back-link[b-qeb4t2m9mc] {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    margin-bottom: var(--space-3);
+    font-weight: var(--font-weight-medium);
+    text-decoration: none;
+}
+
+.page-heading[b-qeb4t2m9mc] {
+    margin-bottom: var(--space-6);
+}
+
+.page-heading p:last-child[b-qeb4t2m9mc] {
+    margin-bottom: 0;
+}
+
+.eyebrow[b-qeb4t2m9mc] {
+    margin-bottom: var(--space-2);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.04em;
+}
+
+.rent-entry-list[b-qeb4t2m9mc] {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.rent-entry[b-qeb4t2m9mc] {
+    padding: var(--space-4);
+}
+
+.rent-entry-heading[b-qeb4t2m9mc] {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-2);
+}
+
+.rent-entry-heading h2[b-qeb4t2m9mc] {
+    margin-bottom: var(--space-1);
+    font-size: var(--font-size-lg);
+}
+
+.rent-entry-heading p[b-qeb4t2m9mc] {
+    margin: 0;
+    font-size: var(--font-size-sm);
+}
+
+.rent-entry-amount[b-qeb4t2m9mc] {
+    margin: var(--space-4) 0 var(--space-1);
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+}
+
+.rent-payment-date[b-qeb4t2m9mc] {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.overdue-copy[b-qeb4t2m9mc] {
+    color: var(--color-danger);
+    font-weight: var(--font-weight-medium);
+}

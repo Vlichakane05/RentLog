@@ -1,0 +1,186 @@
+.tenant-layout[b-6jqbn0y7og] {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+}
+
+.layout-header[b-6jqbn0y7og] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-4);
+    background-color: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.header-content[b-6jqbn0y7og] {
+    flex: 1;
+}
+
+.header-title[b-6jqbn0y7og] {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary);
+}
+
+.header-actions[b-6jqbn0y7og] {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.btn-logout[b-6jqbn0y7og] {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    min-height: var(--touch-target);
+    font-size: var(--font-size-sm);
+    color: var(--color-text);
+    background-color: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.btn-logout:hover[b-6jqbn0y7og] {
+    background-color: var(--color-surface-alt);
+    border-color: var(--color-border-strong);
+}
+
+.btn-logout svg[b-6jqbn0y7og] {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.layout-content[b-6jqbn0y7og] {
+    flex: 1;
+    padding: var(--space-4);
+    margin-bottom: calc(5rem + env(safe-area-inset-bottom));
+}
+
+.bottom-nav[b-6jqbn0y7og] {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    gap: 0;
+    padding: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    background-color: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+}
+
+.nav-item[b-6jqbn0y7og] {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
+    padding: var(--space-3);
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    transition: color var(--transition-fast), background-color var(--transition-fast);
+    border: none;
+    cursor: pointer;
+    outline: none;
+    touch-action: manipulation;
+}
+
+.nav-item:active[b-6jqbn0y7og],
+.nav-item.active[b-6jqbn0y7og] {
+    color: var(--color-primary);
+    background-color: var(--color-primary-subtle-bg);
+}
+
+.nav-item:not(.active):hover[b-6jqbn0y7og] {
+    color: var(--color-text);
+    background-color: var(--color-surface-alt);
+}
+
+.nav-item svg[b-6jqbn0y7og] {
+    width: 1.5rem;
+    height: 1.5rem;
+    stroke: currentColor;
+}
+
+@media (min-width: 641px) {
+    .tenant-layout[b-6jqbn0y7og] {
+        display: grid;
+        grid-template-columns: 240px minmax(0, 1fr);
+        grid-template-rows: auto 1fr;
+    }
+
+    .layout-header[b-6jqbn0y7og] {
+        grid-column: 1 / -1;
+    }
+
+    .layout-content[b-6jqbn0y7og] {
+        grid-column: 2;
+        grid-row: 2;
+        margin-bottom: 0;
+    }
+
+    .bottom-nav[b-6jqbn0y7og] {
+        position: static;
+        grid-column: 1;
+        grid-row: 2;
+        flex-direction: column;
+        width: 240px;
+        height: 100%;
+        border-top: none;
+        border-left: 1px solid var(--color-border);
+        box-shadow: none;
+        gap: var(--space-2);
+        padding: var(--space-4);
+    }
+
+    .nav-item[b-6jqbn0y7og] {
+        flex-direction: row;
+        justify-content: flex-start;
+        padding: var(--space-3) var(--space-4);
+        border-radius: var(--radius-md);
+        gap: var(--space-3);
+    }
+
+    .nav-item svg[b-6jqbn0y7og] {
+        width: 1.25rem;
+        height: 1.25rem;
+    }
+
+    .nav-item span[b-6jqbn0y7og] {
+        text-align: left;
+    }
+
+    .nav-item:active[b-6jqbn0y7og],
+    .nav-item.active[b-6jqbn0y7og] {
+        background-color: var(--color-primary-subtle-bg);
+    }
+}
+
+@media (max-width: 640px) {
+    .layout-header[b-6jqbn0y7og] {
+        padding: var(--space-3);
+    }
+
+    .header-title[b-6jqbn0y7og] {
+        font-size: var(--font-size-md);
+    }
+
+    .btn-logout span[b-6jqbn0y7og] {
+        display: none;
+    }
+
+    .layout-content[b-6jqbn0y7og] {
+        padding: var(--space-3);
+    }
+}
