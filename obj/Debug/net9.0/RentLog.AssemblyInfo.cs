@@ -10,10 +10,11 @@
 using System;
 using System.Reflection;
 
+[assembly: Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute("RentLog-LocalDevelopment")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("RentLog")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+413003b5d3d46aaa394caa90c53b331a5b64685f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3f90aef05ad76d29062263d4265cfcc3ee9c375b")]
 [assembly: System.Reflection.AssemblyProductAttribute("RentLog")]
 [assembly: System.Reflection.AssemblyTitleAttribute("RentLog")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

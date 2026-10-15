@@ -1,7 +1,9 @@
 @page "/login"
 @attribute [AllowAnonymous]
 @inject IAuthService AuthService
+@inject BackendMode BackendMode
 @inject RentLogAuthStateProvider AuthenticationStateProvider
+@inject ILogger<Login> Logger
 @inject NavigationManager Navigation
 
 <PageTitle>Sign in | Rent Log</PageTitle>
@@ -52,12 +54,15 @@
         </EditForm>
 
         <p class="register-prompt">New to Rent Log? <a href="/register">Register or accept an invite</a></p>
-        <details class="test-accounts">
-            <summary>Demo sign-in details</summary>
-            <p><strong>Tenant:</strong> tenant@example.com</p>
-            <p><strong>Landlord:</strong> landlord@example.com</p>
-            <p><strong>Password:</strong> password123</p>
-        </details>
+        @if (BackendMode.UsesMockData)
+        {
+            <details class="test-accounts">
+                <summary>Demo sign-in details</summary>
+                <p><strong>Tenant:</strong> tenant@example.com</p>
+                <p><strong>Landlord:</strong> landlord@example.com</p>
+                <p><strong>Password:</strong> password123</p>
+            </details>
+        }
 </AuthPage>
 
 @code {
@@ -67,10 +72,18 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var user = await AuthService.GetCurrentUserAsync();
-        if (user is not null)
+        try
         {
-            NavigateForRole(user.Role);
+            var user = await AuthService.GetCurrentUserAsync();
+            if (user is not null)
+            {
+                NavigateForRole(user.Role);
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to check the current Rent Log session.");
+            _errorMessage = "We couldn't verify your session. Check the Supabase connection and try again.";
         }
     }
 
@@ -90,6 +103,13 @@
 
             await AuthenticationStateProvider.LoginAsync(user);
             NavigateForRole(user.Role);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Sign-in failed for {Email}.", _form.Email);
+            _errorMessage = exception is InvalidOperationException
+                ? exception.Message
+                : "We couldn't sign you in with those details. Check your email, password and connection, then try again.";
         }
         finally
         {

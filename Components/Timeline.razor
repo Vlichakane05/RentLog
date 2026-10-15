@@ -32,6 +32,7 @@
         "StatusChange" => item.NewStatus is null ? "Update" : $"Status changed to {FormatStatus(item.NewStatus.Value)}",
         "Comment" => "Comment",
         "MediaUpload" => "Evidence uploaded",
+        "Quote" => "Contractor quote",
         _ => item.EventType
     };
 

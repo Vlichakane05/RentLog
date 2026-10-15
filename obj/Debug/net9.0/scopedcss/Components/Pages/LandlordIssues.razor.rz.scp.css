@@ -1,0 +1,75 @@
+.landlord-page[b-xgjkwika1t] {
+    width: min(100%, 70rem);
+    margin: 0 auto;
+}
+
+.page-heading[b-xgjkwika1t] {
+    margin-bottom: var(--space-6);
+}
+
+.page-heading p:last-child[b-xgjkwika1t] {
+    margin-bottom: 0;
+}
+
+.eyebrow[b-xgjkwika1t] {
+    margin-bottom: var(--space-2);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.05em;
+}
+
+.issue-list[b-xgjkwika1t] {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+}
+
+.issue-list-row[b-xgjkwika1t] {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.issue-emergency[b-xgjkwika1t] {
+    border: 2px solid var(--color-danger);
+    border-left-width: 0.5rem;
+    background: var(--color-danger-bg);
+    box-shadow: var(--shadow-md);
+}
+
+.issue-list-top[b-xgjkwika1t] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.issue-list-title[b-xgjkwika1t] {
+    color: var(--color-text);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    overflow-wrap: anywhere;
+}
+
+.issue-list-row p[b-xgjkwika1t] {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.issue-list-row .btn[b-xgjkwika1t] {
+    width: 100%;
+}
+
+@media (max-width: 40rem) {
+    .issue-list[b-xgjkwika1t] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

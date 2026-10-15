@@ -57,8 +57,7 @@
         {
             <section class="resolution-actions card">
                 <h2>Resolution is disputed</h2>
-                <p class="text-secondary">Continue the discussion below. If the issue has now been fixed, you can agree to resolve it.</p>
-                <button type="button" class="btn btn-primary" @onclick="ConfirmResolutionAsync" disabled="@_isSaving">Agree &amp; resolve</button>
+                <p class="text-secondary">Continue the discussion below. Your landlord must respond and mark the issue fixed again before you can confirm the repair.</p>
             </section>
         }
         else if (_issue.Status == Status.Resolved)
@@ -221,7 +220,7 @@
             .SelectMany(item => item.MediaUrls.Select(url => new MediaFile
             {
                 Id = $"{item.Id}-{url}",
-                FileName = Path.GetFileName(url),
+                FileName = GetMediaFileName(url),
                 MimeType = GetMimeType(url),
                 Base64Data = url,
                 ThumbnailBase64 = url,
@@ -230,14 +229,24 @@
             .ToList() ?? [];
     }
 
-    private static string GetMimeType(string url) => Path.GetExtension(url).ToLowerInvariant() switch
+    private static string GetMimeType(string url)
     {
-        ".png" => "image/png",
-        ".heic" => "image/heic",
-        ".mp4" => "video/mp4",
-        ".mov" => "video/quicktime",
-        _ => "image/jpeg"
-    };
+        var path = Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.AbsolutePath : url;
+        return Path.GetExtension(path).ToLowerInvariant() switch
+        {
+            ".png" => "image/png",
+            ".heic" => "image/heic",
+            ".mp4" => "video/mp4",
+            ".mov" => "video/quicktime",
+            _ => "image/jpeg"
+        };
+    }
+
+    private static string GetMediaFileName(string url)
+    {
+        var path = Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.AbsolutePath : url;
+        return Path.GetFileName(path);
+    }
 
     private sealed class CommentForm
     {

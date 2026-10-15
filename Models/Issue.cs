@@ -55,4 +55,10 @@ public class Issue
     /// Whether this issue is currently marked as disputed.
     /// </summary>
     public bool IsDisputed { get; set; }
+
+    public string Description { get; set; } = string.Empty;
+
+    public List<IssueQuote> Quotes { get; set; } = [];
+
+    public string? ContractorName { get; set; }
 }

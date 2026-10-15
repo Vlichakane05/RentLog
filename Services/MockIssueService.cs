@@ -1,9 +1,11 @@
 using RentLog.Models;
+using System.Globalization;
 
 namespace RentLog.Services;
 
 public class MockIssueService : IIssueService
 {
+    private static readonly CultureInfo _moneyCulture = CultureInfo.GetCultureInfo("en-US");
     private readonly List<Issue> _issues =
     [
         new Issue
@@ -16,6 +18,7 @@ public class MockIssueService : IIssueService
             CreatedAt = new DateTime(2026, 10, 8, 8, 30, 0, DateTimeKind.Utc),
             TenantId = "tenant-001",
             LandlordId = "landlord-001",
+            ContractorName = "ClearFlow Plumbing",
             Events =
             [
                 Event("issue-1001", "StatusChange", "Issue reported", "John Tenant", "Tenant", new DateTime(2026, 10, 8, 8, 30, 0, DateTimeKind.Utc), Status.Open),
@@ -33,6 +36,7 @@ public class MockIssueService : IIssueService
             CreatedAt = new DateTime(2026, 9, 24, 12, 0, 0, DateTimeKind.Utc),
             TenantId = "tenant-001",
             LandlordId = "landlord-001",
+            ContractorName = "Coastal Window Repairs",
             Events =
             [
                 Event("issue-1002", "StatusChange", "Issue reported", "John Tenant", "Tenant", new DateTime(2026, 9, 24, 12, 0, 0, DateTimeKind.Utc), Status.Open),
@@ -54,6 +58,74 @@ public class MockIssueService : IIssueService
                 Event("issue-1003", "StatusChange", "Issue reported", "John Tenant", "Tenant", new DateTime(2026, 8, 3, 7, 45, 0, DateTimeKind.Utc), Status.Open),
                 Event("issue-1003", "StatusChange", "The bulb has been replaced and the light is working.", "Jane Landlord", "Landlord", new DateTime(2026, 8, 4, 11, 20, 0, DateTimeKind.Utc), Status.Resolved)
             ]
+        },
+        new Issue
+        {
+            Id = "issue-1004",
+            Title = "Water coming through ceiling",
+            Unit = "2A",
+            Severity = Severity.Emergency,
+            Status = Status.Open,
+            CreatedAt = new DateTime(2026, 10, 15, 6, 10, 0, DateTimeKind.Utc),
+            TenantId = "tenant-002",
+            LandlordId = "landlord-001",
+            Description = "Water is leaking through the bedroom ceiling near the light fitting.",
+            Events =
+            [
+                Event("issue-1004", "StatusChange", "Water is leaking through the bedroom ceiling near the light fitting.", "Alex Tenant", "Tenant", new DateTime(2026, 10, 15, 6, 10, 0, DateTimeKind.Utc), Status.Open)
+            ]
+        },
+        new Issue
+        {
+            Id = "issue-1005",
+            Title = "Front gate lock is jammed",
+            Unit = "1C",
+            Severity = Severity.High,
+            Status = Status.Disputed,
+            IsDisputed = true,
+            CreatedAt = new DateTime(2026, 10, 12, 9, 0, 0, DateTimeKind.Utc),
+            TenantId = "tenant-003",
+            LandlordId = "landlord-001",
+            Description = "The front gate lock still sticks after the repair.",
+            Events =
+            [
+                Event("issue-1005", "StatusChange", "The front gate lock still sticks after the repair.", "Sam Tenant", "Tenant", new DateTime(2026, 10, 12, 9, 0, 0, DateTimeKind.Utc), Status.Open),
+                Event("issue-1005", "StatusChange", "The lock was repaired. Please check it.", "Jane Landlord", "Landlord", new DateTime(2026, 10, 13, 13, 0, 0, DateTimeKind.Utc), Status.AwaitingConfirmation),
+                Event("issue-1005", "StatusChange", "The tenant disputed the resolution.", "Sam Tenant", "Tenant", new DateTime(2026, 10, 14, 8, 30, 0, DateTimeKind.Utc), Status.Disputed),
+                Event("issue-1005", "Comment", "The gate still gets stuck and is hard to lock.", "Sam Tenant", "Tenant", new DateTime(2026, 10, 14, 8, 31, 0, DateTimeKind.Utc))
+            ]
+        },
+        new Issue
+        {
+            Id = "issue-1006",
+            Title = "Replace damaged kitchen cabinet",
+            Unit = "4D",
+            Severity = Severity.Medium,
+            Status = Status.Acknowledged,
+            CreatedAt = new DateTime(2026, 10, 9, 11, 0, 0, DateTimeKind.Utc),
+            TenantId = "tenant-004",
+            LandlordId = "landlord-001",
+            Description = "The cabinet door has come off its hinges.",
+            ContractorName = "Cape Fix Contractors",
+            Quotes =
+            [
+                new IssueQuote
+                {
+                    Id = "quote-6001",
+                    ContractorName = "Cape Fix Contractors",
+                    Amount = 1250m,
+                    WorkDescription = "Replace hinges and rehang cabinet door.",
+                    FileName = "kitchen-cabinet-quote.pdf",
+                    Status = "Pending approval",
+                    SubmittedBy = "Jane Landlord",
+                    SubmittedAt = new DateTime(2026, 10, 10, 9, 30, 0, DateTimeKind.Utc)
+                }
+            ],
+            Events =
+            [
+                Event("issue-1006", "StatusChange", "The cabinet door has come off its hinges.", "Morgan Tenant", "Tenant", new DateTime(2026, 10, 9, 11, 0, 0, DateTimeKind.Utc), Status.Open),
+                Event("issue-1006", "StatusChange", "We are reviewing a contractor quote.", "Jane Landlord", "Landlord", new DateTime(2026, 10, 10, 9, 30, 0, DateTimeKind.Utc), Status.Acknowledged)
+            ]
         }
     ];
 
@@ -70,6 +142,23 @@ public class MockIssueService : IIssueService
     public Task<Issue?> GetTenantIssueAsync(string tenantId, string issueId)
     {
         var issue = _issues.FirstOrDefault(item => item.Id == issueId && item.TenantId == tenantId);
+        return Task.FromResult(issue is null ? null : Clone(issue));
+    }
+
+    public Task<IReadOnlyList<Issue>> GetLandlordIssuesAsync(string landlordId)
+    {
+        IReadOnlyList<Issue> issues = _issues
+            .Where(issue => issue.LandlordId == landlordId)
+            .OrderByDescending(issue => issue.Severity)
+            .ThenByDescending(issue => issue.CreatedAt)
+            .Select(Clone)
+            .ToList();
+        return Task.FromResult(issues);
+    }
+
+    public Task<Issue?> GetLandlordIssueAsync(string landlordId, string issueId)
+    {
+        var issue = _issues.FirstOrDefault(item => item.Id == issueId && item.LandlordId == landlordId);
         return Task.FromResult(issue is null ? null : Clone(issue));
     }
 
@@ -90,7 +179,8 @@ public class MockIssueService : IIssueService
             Status = Status.Open,
             CreatedAt = DateTime.UtcNow,
             TenantId = tenant.Id,
-            LandlordId = "landlord-001"
+            LandlordId = "landlord-001",
+            Description = description.Trim()
         };
 
         issue.Events.Add(Event(issue.Id, "StatusChange", description.Trim(), tenant.Name, tenant.Role.ToString(), issue.CreatedAt, Status.Open));
@@ -131,7 +221,7 @@ public class MockIssueService : IIssueService
         }
 
         var issue = _issues.FirstOrDefault(item => item.Id == issueId && item.TenantId == tenant.Id);
-        if (issue is null || issue.Status is not (Status.AwaitingConfirmation or Status.Disputed))
+        if (issue is null || issue.Status != Status.AwaitingConfirmation)
         {
             return Task.FromResult<Issue?>(null);
         }
@@ -162,6 +252,116 @@ public class MockIssueService : IIssueService
         return Task.FromResult<Issue?>(Clone(issue));
     }
 
+    public Task<Issue?> AcknowledgeAsync(AuthUser landlord, string issueId)
+    {
+        var issue = GetAuthorizedLandlordIssue(landlord, issueId);
+        if (issue is null || issue.Status != Status.Open)
+        {
+            return Task.FromResult<Issue?>(null);
+        }
+
+        SetStatus(issue, landlord, Status.Acknowledged, "The landlord acknowledged this issue.");
+        return Task.FromResult<Issue?>(Clone(issue));
+    }
+
+    public Task<IssueQuote?> AddQuoteAsync(AuthUser landlord, string issueId, string contractorName, decimal amount, string workDescription, string fileName, string fileDataUrl)
+    {
+        var issue = GetAuthorizedLandlordIssue(landlord, issueId);
+        if (issue is null || issue.Status is Status.Resolved or Status.Disputed)
+        {
+            return Task.FromResult<IssueQuote?>(null);
+        }
+
+        var quote = new IssueQuote
+        {
+            Id = $"quote-{Guid.NewGuid():N}",
+            ContractorName = contractorName.Trim(),
+            Amount = amount,
+            WorkDescription = workDescription.Trim(),
+            FileName = Path.GetFileName(fileName),
+            FileDataUrl = fileDataUrl,
+            Status = "Pending approval",
+            SubmittedBy = landlord.Name,
+            SubmittedAt = DateTime.UtcNow
+        };
+        issue.Quotes.Add(quote);
+        issue.ContractorName = quote.ContractorName;
+        issue.Events.Add(Event(issue.Id, "Quote", $"Quote from {quote.ContractorName} for R {quote.Amount.ToString("N2", _moneyCulture)}: {quote.WorkDescription} ({quote.FileName})", landlord.Name, landlord.Role.ToString(), quote.SubmittedAt));
+        return Task.FromResult<IssueQuote?>(CloneQuote(quote));
+    }
+
+    public Task<Issue?> ApproveQuoteAsync(AuthUser landlord, string issueId, string quoteId)
+    {
+        var issue = GetAuthorizedLandlordIssue(landlord, issueId);
+        var quote = issue?.Quotes.FirstOrDefault(item => item.Id == quoteId);
+        if (issue is null || quote is null || quote.Status != "Pending approval")
+        {
+            return Task.FromResult<Issue?>(null);
+        }
+
+        quote.Status = "Approved";
+        issue.ContractorName = quote.ContractorName;
+        issue.Events.Add(Event(issue.Id, "Quote", $"The quote from {quote.ContractorName} for R {quote.Amount.ToString("N2", _moneyCulture)} was approved.", landlord.Name, landlord.Role.ToString(), DateTime.UtcNow));
+        if (issue.Status == Status.Acknowledged)
+        {
+            SetStatus(issue, landlord, Status.InProgress, $"{quote.ContractorName} was approved to complete the quoted work.");
+        }
+
+        return Task.FromResult<Issue?>(Clone(issue));
+    }
+
+    public Task<Issue?> MarkFixedAsync(AuthUser landlord, string issueId, string comment)
+    {
+        var issue = GetAuthorizedLandlordIssue(landlord, issueId);
+        if (issue is null || issue.Status is Status.Open or Status.Resolved or Status.Disputed)
+        {
+            return Task.FromResult<Issue?>(null);
+        }
+
+        issue.Events.Add(Event(issue.Id, "Comment", comment.Trim(), landlord.Name, landlord.Role.ToString(), DateTime.UtcNow));
+        SetStatus(issue, landlord, Status.AwaitingConfirmation, "The landlord marked this issue fixed. Please confirm the repair.");
+        return Task.FromResult<Issue?>(Clone(issue));
+    }
+
+    public Task<Issue?> RespondToDisputeAsync(AuthUser landlord, string issueId, string response, bool agreeResolved)
+    {
+        var issue = GetAuthorizedLandlordIssue(landlord, issueId);
+        if (issue is null || issue.Status != Status.Disputed)
+        {
+            return Task.FromResult<Issue?>(null);
+        }
+
+        issue.Events.Add(Event(issue.Id, "Comment", response.Trim(), landlord.Name, landlord.Role.ToString(), DateTime.UtcNow));
+        if (agreeResolved)
+        {
+            SetStatus(issue, landlord, Status.AwaitingConfirmation, "The landlord responded to the dispute and marked the issue fixed again for tenant confirmation.");
+        }
+        else
+        {
+            SetStatus(issue, landlord, Status.InProgress, "The landlord will continue work on the disputed issue.");
+        }
+
+        issue.IsDisputed = false;
+        return Task.FromResult<Issue?>(Clone(issue));
+    }
+
+    private Issue? GetAuthorizedLandlordIssue(AuthUser landlord, string issueId)
+    {
+        ArgumentNullException.ThrowIfNull(landlord);
+        if (landlord.Role != UserRole.Landlord)
+        {
+            throw new InvalidOperationException("Only a landlord can update landlord issues.");
+        }
+
+        return _issues.FirstOrDefault(item => item.Id == issueId && item.LandlordId == landlord.Id);
+    }
+
+    private static void SetStatus(Issue issue, AuthUser author, Status status, string description)
+    {
+        issue.Status = status;
+        issue.Events.Add(Event(issue.Id, "StatusChange", description, author.Name, author.Role.ToString(), DateTime.UtcNow, status));
+    }
+
     private Issue? FindAuthorizedIssue(AuthUser author, string issueId)
     {
         return _issues.FirstOrDefault(issue =>
@@ -184,6 +384,9 @@ public class MockIssueService : IIssueService
             TenantId = issue.TenantId,
             LandlordId = issue.LandlordId,
             IsDisputed = issue.IsDisputed,
+            Description = issue.Description,
+            ContractorName = issue.ContractorName,
+            Quotes = issue.Quotes.Select(CloneQuote).ToList(),
             Events = issue.Events.Select(item => new IssueEvent
             {
                 Id = item.Id,
@@ -196,6 +399,22 @@ public class MockIssueService : IIssueService
                 NewStatus = item.NewStatus,
                 MediaUrls = [.. item.MediaUrls]
             }).ToList()
+        };
+    }
+
+    private static IssueQuote CloneQuote(IssueQuote quote)
+    {
+        return new IssueQuote
+        {
+            Id = quote.Id,
+            ContractorName = quote.ContractorName,
+            Amount = quote.Amount,
+            WorkDescription = quote.WorkDescription,
+            FileName = quote.FileName,
+            FileDataUrl = quote.FileDataUrl,
+            Status = quote.Status,
+            SubmittedBy = quote.SubmittedBy,
+            SubmittedAt = quote.SubmittedAt
         };
     }
 

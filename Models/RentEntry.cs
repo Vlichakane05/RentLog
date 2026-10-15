@@ -16,4 +16,6 @@ public class RentEntry
     public DateOnly DueDate { get; set; }
     public DateOnly? PaidDate { get; set; }
     public RentPaymentStatus Status { get; set; }
+    public DateTime? LastReminderAt { get; set; }
+    public int ReminderCount { get; set; }
 }
