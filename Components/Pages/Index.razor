@@ -4,7 +4,12 @@
 @inject NavigationManager Navigation
 
 <PageTitle>Rent Log</PageTitle>
-<p class="route-status" role="status">Opening Rent Log...</p>
+<div class="flex items-center justify-center min-h-screen bg-slate-50 text-slate-600">
+    <div class="text-center">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-600 border-t-transparent mb-3"></div>
+        <p class="text-sm font-medium">Entering Rent Log Portal...</p>
+    </div>
+</div>
 
 @code {
     protected override async Task OnInitializedAsync()
@@ -14,8 +19,8 @@
         {
             UserRole.Tenant => "/tenant",
             UserRole.Landlord => "/landlord",
+            UserRole.Contractor => "/contractor",
             _ => "/login"
         }, replace: true);
     }
 }
-    

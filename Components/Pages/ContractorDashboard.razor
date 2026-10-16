@@ -1,0 +1,639 @@
+@page "/contractor"
+@layout RentLog.Components.Layout.ContractorLayout
+@using System.Security.Claims
+@using RentLog.Models
+@using RentLog.Models.Entities
+@inject IPropertyManagementService PropertyService
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Contractor Portal - RentLog</PageTitle>
+
+<div class="space-y-6">
+    <!-- Contractor Profile Banner -->
+    <div class="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center space-x-4">
+            <div class="h-14 w-14 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold text-xl">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </div>
+            <div>
+                <div class="flex items-center space-x-2">
+                    <h2 class="text-xl font-bold text-white">@(_contractorProfile?.CompanyName ?? _currentUser?.Name ?? "Apex Plumb & Pipe Specialists")</h2>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Verified</span>
+                </div>
+                <p class="text-xs text-slate-400 mt-1 flex items-center space-x-3">
+                    <span>Trade: <strong class="text-amber-400">@(_contractorProfile?.Trade ?? "PLUMBING")</strong></span>
+                    <span>&bull;</span>
+                    <span>Rating: <strong class="text-amber-400">@(_contractorProfile?.AverageRating.ToString("F1") ?? "4.9") ★</strong></span>
+                    <span>&bull;</span>
+                    <span>VAT/Tax: @(_contractorProfile?.TaxVatNumber ?? "ZA-492019482")</span>
+                </p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <button type="button" @onclick="OpenUploadProofModal" 
+                    class="px-3.5 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold border border-slate-600 transition-colors flex items-center space-x-1.5">
+                <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                <span>Upload Field Proof</span>
+            </button>
+            <button type="button" @onclick="OpenSubmitInvoiceModal" 
+                    class="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition-colors flex items-center space-x-1.5 shadow">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                <span>Submit Invoice</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex border-b border-slate-800 space-x-2 sm:space-x-4 overflow-x-auto scrollbar-none">
+        <button type="button" @onclick="@(() => _activeTab = "JOBS")" 
+                class="pb-3 px-3 sm:px-4 text-sm font-semibold border-b-2 flex items-center space-x-2 transition-colors whitespace-nowrap @(_activeTab == "JOBS" ? "border-amber-500 text-amber-400" : "border-transparent text-slate-400 hover:text-slate-200")">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+            <span>Assigned Jobs & Quotes</span>
+            <span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300">@_assignedWorkOrders.Count</span>
+        </button>
+
+        <button type="button" @onclick="@(() => _activeTab = "PROOF")" 
+                class="pb-3 px-3 sm:px-4 text-sm font-semibold border-b-2 flex items-center space-x-2 transition-colors whitespace-nowrap @(_activeTab == "PROOF" ? "border-amber-500 text-amber-400" : "border-transparent text-slate-400 hover:text-slate-200")">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            <span>Job Proof Media (GPS)</span>
+            <span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300">@_proofMedia.Count</span>
+        </button>
+
+        <button type="button" @onclick="@(() => _activeTab = "INVOICES")" 
+                class="pb-3 px-3 sm:px-4 text-sm font-semibold border-b-2 flex items-center space-x-2 transition-colors whitespace-nowrap @(_activeTab == "INVOICES" ? "border-amber-500 text-amber-400" : "border-transparent text-slate-400 hover:text-slate-200")">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" /></svg>
+            <span>Invoices & Payouts</span>
+            <span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300">@_invoices.Count</span>
+        </button>
+    </div>
+
+    @if (_isLoading)
+    {
+        <div class="py-16 flex flex-col items-center justify-center">
+            <div class="animate-spin rounded-full h-10 w-10 border-4 border-amber-500 border-t-transparent mb-4"></div>
+            <p class="text-sm text-slate-400">Loading assigned tasks and job details...</p>
+        </div>
+    }
+    else
+    {
+        <!-- TAB 1: ASSIGNED JOBS & QUOTES -->
+        @if (_activeTab == "JOBS")
+        {
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-base font-bold text-white">Active Assigned Work Orders</h3>
+                        <p class="text-xs text-slate-400">Update execution status in real-time or submit detailed quotes for approval</p>
+                    </div>
+                </div>
+
+                @if (!_assignedWorkOrders.Any())
+                {
+                    <div class="bg-slate-800/40 border border-slate-700/80 rounded-2xl p-12 text-center text-slate-400">
+                        No work orders currently assigned to your profile.
+                    </div>
+                }
+                @foreach (var wo in _assignedWorkOrders)
+                {
+                    var unit = _units.FirstOrDefault(u => u.Id == wo.UnitId);
+                    var quote = _quotes.FirstOrDefault(q => q.WorkOrderId == wo.Id);
+
+                    <div class="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-5 shadow-sm space-y-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-700/80 pb-3">
+                            <div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                        @wo.Category
+                                    </span>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300">
+                                        Priority: @wo.Priority
+                                    </span>
+                                    <span class="text-xs text-slate-400">&bull; @(unit != null ? $"{unit.BuildingName} - {unit.UnitNumber} ({unit.StreetAddress})" : "Location on file")</span>
+                                </div>
+                                <h4 class="text-base font-bold text-white mt-1">@wo.Title</h4>
+                            </div>
+
+                            <!-- Status Dropdown / Action -->
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs text-slate-400">Status:</span>
+                                <select value="@wo.Status" @onchange="@(e => UpdateWorkOrderStatusAsync(wo.Id, e.Value?.ToString() ?? "LOGGED"))"
+                                        class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs font-bold text-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                    <option value="LOGGED">LOGGED</option>
+                                    <option value="SCHEDULED">SCHEDULED</option>
+                                    <option value="IN_PROGRESS">IN_PROGRESS</option>
+                                    <option value="COMPLETED">COMPLETED</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <p class="text-xs text-slate-300 leading-relaxed bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                            @wo.Description
+                        </p>
+
+                        <!-- Quote section for this job -->
+                        <div class="p-4 bg-slate-900/80 rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                            @if (quote != null)
+                            {
+                                <div>
+                                    <div class="flex items-center space-x-2">
+                                        <span class="font-bold text-slate-300">Quote Submitted:</span>
+                                        <span class="font-mono text-white">Labor R @quote.LaborCost.ToString("N2") + Material R @quote.MaterialCost.ToString("N2")</span>
+                                        <span class="text-slate-500">=</span>
+                                        <span class="font-bold text-amber-400 text-sm">R @quote.TotalAmount.ToString("N2")</span>
+                                    </div>
+                                    <span class="text-[11px] text-slate-400">Notes: @quote.Notes</span>
+                                </div>
+                                <div>
+                                    @if (quote.Status == "APPROVED")
+                                    {
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                            Quote Approved by Landlord
+                                        </span>
+                                    }
+                                    else if (quote.Status == "REJECTED")
+                                    {
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                                            Quote Rejected
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                            Awaiting Approval
+                                        </span>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-slate-400">
+                                    No formal quote submitted yet for this work order.
+                                </div>
+                                <button type="button" @onclick="@(() => OpenSubmitQuoteModal(wo))"
+                                        class="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-colors shadow">
+                                    Submit Quote
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- TAB 2: JOB PROOF MEDIA -->
+        @if (_activeTab == "PROOF")
+        {
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-base font-bold text-white">Field Proof Photos & Geolocation Tags</h3>
+                        <p class="text-xs text-slate-400">Upload before/after evidence photos tagged with GPS latitude and longitude</p>
+                    </div>
+                    <button type="button" @onclick="OpenUploadProofModal" 
+                            class="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition-colors shadow flex items-center space-x-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                        <span>Add Field Photo</span>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    @foreach (var proof in _proofMedia)
+                    {
+                        var wo = _assignedWorkOrders.FirstOrDefault(w => w.Id == proof.WorkOrderId);
+                        <div class="bg-slate-800/60 border border-slate-700/80 rounded-2xl overflow-hidden shadow-sm flex flex-col justify-between">
+                            <div>
+                                <img src="@proof.MediaUrl" alt="@proof.ProofType" class="w-full h-44 object-cover" />
+                                <div class="p-3.5 space-y-1.5">
+                                    <div class="flex items-center justify-between">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-700 text-slate-200">
+                                            @proof.ProofType
+                                        </span>
+                                        <span class="text-[10px] text-slate-400">@proof.CreatedAt.ToString("dd MMM, HH:mm")</span>
+                                    </div>
+                                    <p class="text-xs font-medium text-slate-300 truncate">@(wo?.Title ?? "Work Order Job")</p>
+                                </div>
+                            </div>
+
+                            @if (proof.Latitude.HasValue && proof.Longitude.HasValue)
+                            {
+                                <div class="p-3 bg-slate-900/60 border-t border-slate-800 flex items-center justify-between text-[11px] font-mono text-emerald-400">
+                                    <span>GPS Tagged</span>
+                                    <span>@proof.Latitude.Value.ToString("F4"), @proof.Longitude.Value.ToString("F4")</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- TAB 3: INVOICES & PAYOUTS -->
+        @if (_activeTab == "INVOICES")
+        {
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-base font-bold text-white">Submitted Contractor Invoices</h3>
+                        <p class="text-xs text-slate-400">Track landlord approval status and EFT payout progress</p>
+                    </div>
+                    <button type="button" @onclick="OpenSubmitInvoiceModal" 
+                            class="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition-colors shadow flex items-center space-x-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                        <span>Create Invoice</span>
+                    </button>
+                </div>
+
+                <div class="bg-slate-800/60 border border-slate-700/80 rounded-2xl overflow-hidden shadow-sm">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-900/60 text-slate-400 font-semibold uppercase tracking-wider">
+                                <tr>
+                                    <th class="py-3 px-4">Date</th>
+                                    <th class="py-3 px-4">Invoice #</th>
+                                    <th class="py-3 px-4">Work Order</th>
+                                    <th class="py-3 px-4 text-right">Amount</th>
+                                    <th class="py-3 px-4 text-center">Landlord Approval</th>
+                                    <th class="py-3 px-4 text-center">Payout</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-700/60">
+                                @if (!_invoices.Any())
+                                {
+                                    <tr>
+                                        <td colspan="6" class="py-8 text-center text-slate-500">No invoices submitted yet.</td>
+                                    </tr>
+                                }
+                                @foreach (var inv in _invoices)
+                                {
+                                    var wo = _assignedWorkOrders.FirstOrDefault(w => w.Id == inv.WorkOrderId);
+                                    <tr class="hover:bg-slate-700/30 transition-colors">
+                                        <td class="py-3 px-4 text-slate-400">@inv.CreatedAt.ToString("dd MMM yyyy")</td>
+                                        <td class="py-3 px-4 font-mono font-bold text-amber-400">@inv.InvoiceNumber</td>
+                                        <td class="py-3 px-4 font-medium text-slate-200">@(wo?.Title ?? inv.WorkOrderId.ToString()[..8])</td>
+                                        <td class="py-3 px-4 text-right font-bold text-white text-sm">R @inv.TotalAmount.ToString("N2")</td>
+                                        <td class="py-3 px-4 text-center">
+                                            @if (inv.IsApprovedByLandlord)
+                                            {
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">APPROVED</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">PENDING APPROVAL</span>
+                                            }
+                                        </td>
+                                        <td class="py-3 px-4 text-center">
+                                            @if (inv.PayoutStatus == "PAID")
+                                            {
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">DISBURSED</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-700 text-slate-300">QUEUED</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+
+    <!-- MODAL 1: SUBMIT QUOTE -->
+    @if (_showQuoteModal && _selectedWorkOrder != null)
+    {
+        <div class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-base font-bold text-white">Submit Work Order Quote</h3>
+                    <button type="button" @onclick="@(() => _showQuoteModal = false)" class="text-slate-400 hover:text-white">&times;</button>
+                </div>
+                <div class="p-3 bg-slate-800/60 rounded-xl mb-4 text-xs text-slate-300">
+                    Job: <strong class="text-white">@_selectedWorkOrder.Title</strong>
+                </div>
+                <EditForm Model="@_quoteModel" OnValidSubmit="HandleSubmitQuoteAsync" class="space-y-3.5 text-xs">
+                    <DataAnnotationsValidator />
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-slate-300 font-semibold mb-1">Labor Cost (ZAR)</label>
+                            <InputNumber @bind-Value="_quoteModel.LaborCost" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono" />
+                            <ValidationMessage For="@(() => _quoteModel.LaborCost)" class="text-rose-400" />
+                        </div>
+                        <div>
+                            <label class="block text-slate-300 font-semibold mb-1">Material Cost (ZAR)</label>
+                            <InputNumber @bind-Value="_quoteModel.MaterialCost" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono" />
+                            <ValidationMessage For="@(() => _quoteModel.MaterialCost)" class="text-rose-400" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Estimated Hours</label>
+                        <InputNumber @bind-Value="_quoteModel.EstimatedHours" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono" />
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Work Description & Scope</label>
+                        <InputTextArea @bind-Value="_quoteModel.Notes" rows="3" placeholder="Parts included, scope of labor, warranty details..." class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white" />
+                    </div>
+                    <div class="pt-4 flex justify-end space-x-2">
+                        <button type="button" @onclick="@(() => _showQuoteModal = false)" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300">Cancel</button>
+                        <button type="submit" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold">Submit Quote</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+
+    <!-- MODAL 2: UPLOAD FIELD PROOF MEDIA -->
+    @if (_showProofModal)
+    {
+        <div class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-base font-bold text-white">Upload Job Proof Photo</h3>
+                    <button type="button" @onclick="@(() => _showProofModal = false)" class="text-slate-400 hover:text-white">&times;</button>
+                </div>
+                <EditForm Model="@_proofModel" OnValidSubmit="HandleUploadProofAsync" class="space-y-3.5 text-xs">
+                    <DataAnnotationsValidator />
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Target Work Order</label>
+                        <InputSelect @bind-Value="_proofModel.WorkOrderId" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+                            @foreach (var wo in _assignedWorkOrders)
+                            {
+                                <option value="@wo.Id">@wo.Title (@wo.Category)</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Proof Type</label>
+                        <InputSelect @bind-Value="_proofModel.ProofType" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+                            <option value="BEFORE_PHOTO">Before Job Photo</option>
+                            <option value="AFTER_PHOTO">After Job Completion Photo</option>
+                            <option value="RECEIPT">Material Purchase Receipt</option>
+                            <option value="COMPLETION_SIGNATURE">Completion Signature</option>
+                        </InputSelect>
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Image URL / Media Path</label>
+                        <InputText @bind-Value="_proofModel.MediaUrl" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono text-[11px]" />
+                        <ValidationMessage For="@(() => _proofModel.MediaUrl)" class="text-rose-400" />
+                    </div>
+                    <!-- GPS Geolocation -->
+                    <div class="p-3 bg-slate-800/60 rounded-xl space-y-2 border border-slate-800">
+                        <div class="flex items-center justify-between">
+                            <span class="font-semibold text-slate-300">GPS Geolocation</span>
+                            <button type="button" @onclick="AutoFillGps" class="text-[11px] text-amber-400 hover:underline">
+                                Auto-Tag Current GPS
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 font-mono">
+                            <div>
+                                <label class="text-[10px] text-slate-400">Latitude</label>
+                                <InputNumber @bind-Value="_proofModel.Latitude" class="w-full px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-emerald-400 text-xs" />
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-slate-400">Longitude</label>
+                                <InputNumber @bind-Value="_proofModel.Longitude" class="w-full px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-emerald-400 text-xs" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pt-4 flex justify-end space-x-2">
+                        <button type="button" @onclick="@(() => _showProofModal = false)" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300">Cancel</button>
+                        <button type="submit" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold">Upload Proof</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+
+    <!-- MODAL 3: SUBMIT FORMAL INVOICE -->
+    @if (_showInvoiceModal)
+    {
+        <div class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-base font-bold text-white">Submit Formal Contractor Invoice</h3>
+                    <button type="button" @onclick="@(() => _showInvoiceModal = false)" class="text-slate-400 hover:text-white">&times;</button>
+                </div>
+                <EditForm Model="@_invoiceModel" OnValidSubmit="HandleSubmitInvoiceAsync" class="space-y-3.5 text-xs">
+                    <DataAnnotationsValidator />
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Select Completed Job</label>
+                        <InputSelect @bind-Value="_invoiceModel.WorkOrderId" @bind-Value:after="OnInvoiceWorkOrderChanged" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+                            @foreach (var wo in _assignedWorkOrders)
+                            {
+                                <option value="@wo.Id">@wo.Title</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Invoice Number</label>
+                        <InputText @bind-Value="_invoiceModel.InvoiceNumber" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono" />
+                        <ValidationMessage For="@(() => _invoiceModel.InvoiceNumber)" class="text-rose-400" />
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Total Invoice Amount (ZAR)</label>
+                        <InputNumber @bind-Value="_invoiceModel.TotalAmount" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono text-sm" />
+                        <ValidationMessage For="@(() => _invoiceModel.TotalAmount)" class="text-rose-400" />
+                    </div>
+                    <div class="pt-4 flex justify-end space-x-2">
+                        <button type="button" @onclick="@(() => _showInvoiceModal = false)" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300">Cancel</button>
+                        <button type="submit" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold">Transmit to Landlord</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private AuthUser? _currentUser;
+    private bool _isLoading = true;
+    private string _activeTab = "JOBS";
+
+    private ContractorProfileEntity? _contractorProfile;
+    private List<WorkOrderEntity> _assignedWorkOrders = new();
+    private List<ContractorQuoteEntity> _quotes = new();
+    private List<JobProofMediaEntity> _proofMedia = new();
+    private List<ContractorInvoiceEntity> _invoices = new();
+    private List<UnitEntity> _units = new();
+
+    // Modals
+    private bool _showQuoteModal;
+    private WorkOrderEntity? _selectedWorkOrder;
+    private SubmitQuoteViewModel _quoteModel = new();
+
+    private bool _showProofModal;
+    private UploadProofMediaViewModel _proofModel = new();
+
+    private bool _showInvoiceModal;
+    private SubmitInvoiceViewModel _invoiceModel = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _currentUser = await AuthService.GetCurrentUserAsync();
+        await LoadContractorDataAsync();
+    }
+
+    private async Task LoadContractorDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var contractorId = _currentUser?.ContractorProfileId ?? MockPropertyManagementService.DemoContractorProfileId;
+            _contractorProfile = await PropertyService.GetContractorProfileByIdAsync(contractorId);
+            _units = (await PropertyService.GetUnitsAsync()).ToList();
+
+            _assignedWorkOrders = (await PropertyService.GetWorkOrdersForContractorAsync(contractorId)).ToList();
+            _quotes = (await PropertyService.GetQuotesForContractorAsync(contractorId)).ToList();
+            _invoices = (await PropertyService.GetInvoicesForContractorAsync(contractorId)).ToList();
+
+            _proofMedia.Clear();
+            foreach (var wo in _assignedWorkOrders)
+            {
+                var media = await PropertyService.GetProofMediaForWorkOrderAsync(wo.Id);
+                _proofMedia.AddRange(media);
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task UpdateWorkOrderStatusAsync(Guid workOrderId, string newStatus)
+    {
+        await PropertyService.UpdateWorkOrderStatusAsync(workOrderId, newStatus);
+        await LoadContractorDataAsync();
+    }
+
+    private void OpenSubmitQuoteModal(WorkOrderEntity wo)
+    {
+        _selectedWorkOrder = wo;
+        _quoteModel = new SubmitQuoteViewModel
+        {
+            WorkOrderId = wo.Id,
+            LaborCost = 650.00m,
+            MaterialCost = 420.00m,
+            EstimatedHours = 2.5m,
+            Notes = "Standard labor rate and OEM replacement materials"
+        };
+        _showQuoteModal = true;
+    }
+
+    private async Task HandleSubmitQuoteAsync()
+    {
+        if (_selectedWorkOrder == null) return;
+        var contractorId = _currentUser?.ContractorProfileId ?? MockPropertyManagementService.DemoContractorProfileId;
+
+        var quote = new ContractorQuoteEntity
+        {
+            WorkOrderId = _quoteModel.WorkOrderId,
+            ContractorId = contractorId,
+            LaborCost = _quoteModel.LaborCost,
+            MaterialCost = _quoteModel.MaterialCost,
+            TotalAmount = _quoteModel.LaborCost + _quoteModel.MaterialCost,
+            EstimatedHours = _quoteModel.EstimatedHours,
+            Notes = _quoteModel.Notes,
+            Status = "SUBMITTED",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await PropertyService.SubmitQuoteAsync(quote);
+        _showQuoteModal = false;
+        await LoadContractorDataAsync();
+    }
+
+    private void OpenUploadProofModal()
+    {
+        var targetWo = _assignedWorkOrders.FirstOrDefault();
+        _proofModel = new UploadProofMediaViewModel
+        {
+            WorkOrderId = targetWo?.Id ?? Guid.Empty,
+            ProofType = "AFTER_PHOTO",
+            MediaUrl = "https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=800&q=80",
+            Latitude = -33.9249m,
+            Longitude = 18.4241m
+        };
+        _showProofModal = true;
+    }
+
+    private void AutoFillGps()
+    {
+        // Cape Town GPS coordinates with slight jitter
+        _proofModel.Latitude = -33.9249m + (decimal)(Random.Shared.NextDouble() * 0.002);
+        _proofModel.Longitude = 18.4241m + (decimal)(Random.Shared.NextDouble() * 0.002);
+    }
+
+    private async Task HandleUploadProofAsync()
+    {
+        var contractorUserId = _currentUser != null && Guid.TryParse(_currentUser.Id, out var id)
+            ? id
+            : MockPropertyManagementService.DemoContractorUserId;
+
+        var proof = new JobProofMediaEntity
+        {
+            WorkOrderId = _proofModel.WorkOrderId,
+            UploadedById = contractorUserId,
+            ProofType = _proofModel.ProofType,
+            MediaUrl = _proofModel.MediaUrl,
+            Latitude = _proofModel.Latitude,
+            Longitude = _proofModel.Longitude,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await PropertyService.UploadProofMediaAsync(proof);
+        _showProofModal = false;
+        await LoadContractorDataAsync();
+        _activeTab = "PROOF";
+    }
+
+    private void OpenSubmitInvoiceModal()
+    {
+        var targetWo = _assignedWorkOrders.FirstOrDefault();
+        var quote = targetWo != null ? _quotes.FirstOrDefault(q => q.WorkOrderId == targetWo.Id) : null;
+        var amount = quote?.TotalAmount ?? 1070.00m;
+
+        _invoiceModel = new SubmitInvoiceViewModel
+        {
+            WorkOrderId = targetWo?.Id ?? Guid.Empty,
+            InvoiceNumber = $"INV-APEX-{DateTime.UtcNow:yyyy}-{Random.Shared.Next(100, 999)}",
+            TotalAmount = amount
+        };
+        _showInvoiceModal = true;
+    }
+
+    private void OnInvoiceWorkOrderChanged()
+    {
+        var quote = _quotes.FirstOrDefault(q => q.WorkOrderId == _invoiceModel.WorkOrderId);
+        if (quote != null)
+        {
+            _invoiceModel.TotalAmount = quote.TotalAmount;
+        }
+    }
+
+    private async Task HandleSubmitInvoiceAsync()
+    {
+        var contractorId = _currentUser?.ContractorProfileId ?? MockPropertyManagementService.DemoContractorProfileId;
+        var invoice = new ContractorInvoiceEntity
+        {
+            WorkOrderId = _invoiceModel.WorkOrderId,
+            ContractorId = contractorId,
+            InvoiceNumber = _invoiceModel.InvoiceNumber,
+            TotalAmount = _invoiceModel.TotalAmount,
+            IsApprovedByLandlord = false,
+            PayoutStatus = "PENDING",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await PropertyService.SubmitInvoiceAsync(invoice);
+        _showInvoiceModal = false;
+        await LoadContractorDataAsync();
+        _activeTab = "INVOICES";
+    }
+}

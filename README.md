@@ -6,57 +6,52 @@ records, and property data use the Supabase C# client and user-scoped access
 tokens. Issue history is append-only. The `register`, `invite`, and forgot
 password pages remain placeholders; create accounts in Supabase Auth for now.
 
-## Supabase setup
+## Project Status & Limitations Disclaimer
 
-1. Create a Supabase project and copy the **Project URL** and its
-   **publishable key** (or legacy anon key) from **Project Settings → API**.
-   Never use the `service_role` or secret key in this app.
-2. In **SQL Editor**, run [`Schema/Supabase.sql`](Schema/Supabase.sql). It
-   creates the application tables, profile trigger, RLS policies, immutable
-   issue-event enforcement, and the private `issue-media` bucket with upload
-   limits and Storage policies. `Schema/RentLogDB.sql` is an older context-only
-   draft and is not the Stage 7 migration.
-3. Create accounts in **Authentication → Users**. A database trigger creates a
-   `public.users` profile with the `tenant` role. To promote an account to
-   landlord, run this as the project administrator in SQL Editor:
+> **Please Note:** This application is currently a **work-in-progress** and is **not fully functional**. 
+> 
+> * **The Contractor Portal is Incomplete:** Most notably, the contractor side of things—including the temporary password/PIN verification login flow, contractor quote submissions, job proof media uploads, and invoice approval workflows—is currently stubbed or partially implemented. Core tenant and landlord views are functional, but full end-to-end contractor workflows require further development.
 
-   ```sql
-   update public.users
-   set role = 'landlord'
-   where email = 'landlord@example.com';
-   ```
+---
 
-   Roles are not accepted from sign-up metadata, so a new account cannot grant
-   itself landlord access.
-4. Add properties, units, active tenancies, and rent-payment rows in the
-   dashboard or through an administrative workflow. Link each tenancy to the
-   Supabase Auth user's UUID, not an email address.
-5. Configure the app's local secrets (from the repository directory):
+## Features & Portals
 
-   ```powershell
-   dotnet user-secrets init
-   dotnet user-secrets set "Supabase:Url" "https://YOUR_PROJECT_REF.supabase.co"
-   dotnet user-secrets set "Supabase:AnonKey" "YOUR_PUBLISHABLE_OR_ANON_KEY"
+The application is structured around three core user roles:
+
+1. **Tenant Portal (`/tenant`)**
+   - View active tenancy details, lease terms, and unit information.
+   - Track rent and utility payment history and status.
+   - Log maintenance requests (work orders) and monitor their progress.
+2. **Landlord / Owner Portal (`/landlord`)**
+   - Manage properties (`units`) and active tenancies.
+   - Monitor financial dashboards, incoming rent, and track operations.
+   - Review and approve maintenance work orders and quotes.
+3. **Contractor Portal (`/contractor`)** *(Under Construction)*
+   - Specialized login flow intended for temporary job access via secure PINs/passwords.
+   - Job execution tracking, quote estimation, and invoice submissions.
+
+---
+
+## Tech Stack
+
+- **Framework:** .NET 10 / Blazor Web App
+- **Styling:** Tailwind CSS v4
+- **Database:** PostgreSQL (Supabase) via EF Core / Direct Client
+- **Authentication:** Role-Based Access Control (`TENANT`, `LANDLORD`, `CONTRACTOR`)
+
+---
+
+## Getting Started
+
+### Prerequisites
+- [.NET 10 SDK](https://dotnet.microsoft.com/download) installed on your machine.
+- An existing PostgreSQL / Supabase database matching the required 13-table schema (`users`, `units`, `work_orders`, etc.).
+
+### Installation & Running Locally
+
+1. **Clone the repository:**
+   ```bash
+   git clone [https://github.com/your-username/your-property-app.git](https://github.com/your-username/your-property-app.git)
+   cd your-property-app
+   dotnet build
    dotnet run
-   ```
-
-   The equivalent environment variables are `SUPABASE_URL` and
-   `SUPABASE_ANON_KEY`. For deployment, configure those as platform secrets.
-   The app fails at startup with a clear configuration error if either value is
-   missing. Do not commit credentials to `appsettings.json`.
-
-The database and Storage clients use the signed-in user's token; RLS is the
-authorization boundary. Media is uploaded to a private bucket and served using
-one-hour signed URLs. Storage and database policies enforce a 10 MiB photo
-limit and a 50 MiB video limit; the existing browser-side validation enforces
-the 30-second video duration limit. Supabase Storage cannot inspect video
-duration, so a hostile client that bypasses the app would need a server-side
-media processor/Edge Function for that final check. The server's Blazor
-message limit is raised to accommodate the current base64 video upload flow.
-
-Landlord reminder actions persist the reminder timestamp and count in
-`rent_payments`; they do not send email or SMS because no notification provider
-is configured. Session state is held by the scoped Supabase client for the
-active Blazor Server circuit; signing in again may be necessary after a full
-browser reload. Supabase signed media links expire after one hour and are
-renewed when an issue is loaded.
