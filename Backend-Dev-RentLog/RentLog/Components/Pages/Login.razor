@@ -1,0 +1,148 @@
+@page "/login"
+@attribute [AllowAnonymous]
+@inject IAuthService AuthService
+@inject BackendMode BackendMode
+@inject RentLogAuthStateProvider AuthenticationStateProvider
+@inject ILogger<Login> Logger
+@inject NavigationManager Navigation
+
+<PageTitle>Sign in | Rent Log</PageTitle>
+
+<AuthPage TitleId="login-title">
+        <a class="brand" href="/" aria-label="Rent Log home">
+            <span class="brand-mark" aria-hidden="true">R</span>
+            <span>Rent Log</span>
+        </a>
+
+        <div class="login-heading">
+            <h1 id="login-title">Welcome back</h1>
+            <p class="text-secondary">Sign in to keep your rental records in one place.</p>
+        </div>
+
+        @if (Registered == "1")
+        {
+            <div class="alert alert-success" role="status">Your account has been created. Sign in to continue.</div>
+        }
+
+        <EditForm Model="_form" OnValidSubmit="SignInAsync">
+            <DataAnnotationsValidator />
+            <div class="form-field">
+                <label class="form-label" for="email">Email address</label>
+                <InputText id="email" class="input" type="email" autocomplete="username" @bind-Value="_form.Email" disabled="@_isLoading" />
+                <ValidationMessage For="@(() => _form.Email)" />
+            </div>
+            <div class="form-field">
+                <div class="password-label">
+                    <label class="form-label" for="password">Password</label>
+                    <a href="/forgot-password">Forgot password?</a>
+                </div>
+                <InputText id="password" class="input" type="password" autocomplete="current-password" @bind-Value="_form.Password" disabled="@_isLoading" />
+                <ValidationMessage For="@(() => _form.Password)" />
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(_errorMessage))
+            {
+                <div class="alert alert-danger login-error" role="alert">@_errorMessage</div>
+            }
+
+            <button class="btn btn-primary sign-in-button" type="submit" disabled="@_isLoading">
+                @if (_isLoading)
+                {
+                    <span class="loading-spinner" aria-hidden="true"></span>
+                    <span>Signing in...</span>
+                }
+                else
+                {
+                    <span>Sign in</span>
+                }
+            </button>
+        </EditForm>
+
+        <p class="register-prompt">New to Rent Log? <a href="/register">Register or accept an invite</a></p>
+        @if (BackendMode.UsesMockData)
+        {
+            <details class="test-accounts">
+                <summary>Demo sign-in details</summary>
+                <p><strong>Tenant:</strong> tenant@example.com</p>
+                <p><strong>Landlord:</strong> landlord@example.com</p>
+                <p><strong>Password:</strong> password123</p>
+            </details>
+        }
+</AuthPage>
+
+@code {
+    [SupplyParameterFromQuery(Name = "registered")] public string? Registered { get; set; }
+
+    private readonly LoginForm _form = new();
+    private bool _isLoading;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var user = await AuthService.GetCurrentUserAsync();
+            if (user is not null)
+            {
+                NavigateForRole(user.Role);
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to check the current Rent Log session.");
+            _errorMessage = "We couldn't verify your session. Check the Supabase connection and try again.";
+        }
+    }
+
+    private async Task SignInAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var user = await AuthService.LoginAsync(_form.Email.Trim(), _form.Password);
+            if (user is null)
+            {
+                _errorMessage = "We couldn't sign you in with those details. Check your email and password and try again.";
+                return;
+            }
+
+            await AuthenticationStateProvider.LoginAsync(user);
+            NavigateForRole(user.Role);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Sign-in failed for {Email}.", _form.Email);
+            _errorMessage = exception is InvalidOperationException
+                ? exception.Message
+                : "We couldn't sign you in with those details. Check your email, password and connection, then try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void NavigateForRole(UserRole role)
+    {
+        var destination = role switch
+        {
+            UserRole.Tenant => "/tenant",
+            UserRole.Landlord => "/landlord",
+            _ => "/login"
+        };
+
+        Navigation.NavigateTo(destination, replace: true);
+    }
+
+    private sealed class LoginForm
+    {
+        [Required(ErrorMessage = "Enter your email address.")]
+        [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Enter your password.")]
+        public string Password { get; set; } = string.Empty;
+    }
+}

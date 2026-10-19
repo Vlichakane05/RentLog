@@ -1,0 +1,218 @@
+@page "/tenant/issues/new"
+@layout TenantLayout
+@inject IAuthService AuthService
+@inject IIssueService IssueService
+@inject ITenancyService TenancyService
+@inject ILogger<NewTenantIssue> Logger
+@inject NavigationManager Navigation
+
+<PageTitle>Report an issue | Rent Log</PageTitle>
+
+<div class="tenant-page">
+    <a class="back-link" href="/tenant">← Back to home</a>
+    <header class="page-heading">
+        <p class="eyebrow">MAINTENANCE</p>
+        <h1>Report an issue</h1>
+        <p class="text-secondary">Tell your landlord what needs attention. Your report and updates become part of the issue history.</p>
+    </header>
+
+    @if (_isLoading)
+    {
+        <p role="status" class="text-secondary">Preparing your report...</p>
+    }
+    else if (_successIssue is not null)
+    {
+        <section class="card success-card" role="status">
+            <span class="success-mark" aria-hidden="true">✓</span>
+            <h2>Issue reported</h2>
+            <p>Your issue has been added to your maintenance history.</p>
+            <a class="btn btn-primary" href="@($"/tenant/issues/{_successIssue.Id}")">View your issue</a>
+            <a class="btn btn-secondary" href="/tenant">Back to home</a>
+        </section>
+    }
+    else if (_pageError is not null)
+    {
+        <div class="alert alert-danger" role="alert">@_pageError</div>
+    }
+    else
+    {
+        <EditForm Model="_form" OnValidSubmit="SubmitAsync" class="card issue-form">
+            <DataAnnotationsValidator />
+            <div class="form-field">
+                <label class="form-label" for="unit">Rental unit</label>
+                @if (_tenantUnits.Count > 1)
+                {
+                    <InputSelect id="unit" class="input" @bind-Value="_form.Unit">
+                        @foreach (var unit in _tenantUnits)
+                        {
+                            <option value="@unit.Id">Unit @unit.UnitNumber · @unit.PropertyName</option>
+                        }
+                    </InputSelect>
+                }
+                else if (_tenantUnits.Count == 1)
+                {
+                    <input id="unit" class="input" value="@($"Unit {_tenantUnits[0].UnitNumber} · {_tenantUnits[0].PropertyName}")" readonly />
+                }
+                <ValidationMessage For="@(() => _form.Unit)" />
+            </div>
+            <div class="form-field">
+                <label class="form-label" for="issue-title">Issue title</label>
+                <InputText id="issue-title" class="input" @bind-Value="_form.Title" maxlength="100" placeholder="e.g. Leaking kitchen tap" />
+                <ValidationMessage For="@(() => _form.Title)" />
+            </div>
+            <div class="form-field">
+                <label class="form-label" for="issue-description">What happened?</label>
+                <InputTextArea id="issue-description" class="input description-input" @bind-Value="_form.Description" maxlength="3000" rows="5" placeholder="Describe the problem and where it is..." />
+                <ValidationMessage For="@(() => _form.Description)" />
+            </div>
+            <fieldset class="severity-fieldset">
+                <legend class="form-label">How urgent is it?</legend>
+                <InputRadioGroup @bind-Value="_form.Severity" class="severity-options">
+                    @foreach (var severity in Enum.GetValues<Severity>())
+                    {
+                        <label class="severity-option">
+                            <InputRadio Value="@severity" />
+                            <SeverityBadge Severity="@severity" />
+                        </label>
+                    }
+                </InputRadioGroup>
+            </fieldset>
+
+            <section class="form-field evidence-field">
+                <div>
+                    <h2>Photos or videos <span class="optional-label">(optional)</span></h2>
+                    <p class="text-secondary">Add evidence to help your landlord understand the issue.</p>
+                </div>
+                <MediaUploader OnMediaUploaded="OnMediaUploaded" OnPendingMediaChanged="OnPendingMediaChanged" />
+                @if (_hasPendingMedia)
+                {
+                    <p class="text-secondary" role="status">Upload your selected evidence before submitting this report.</p>
+                }
+            </section>
+
+            @if (!string.IsNullOrWhiteSpace(_submitError))
+            {
+                <div class="alert alert-danger" role="alert">@_submitError</div>
+            }
+
+            <button type="submit" class="btn btn-primary submit-issue-button" disabled="@(_isSubmitting || _hasPendingMedia)">
+                @if (_isSubmitting)
+                {
+                    <span class="loading-spinner" aria-hidden="true"></span>
+                    <span>Submitting report...</span>
+                }
+                else
+                {
+                    <span>Submit report</span>
+                }
+            </button>
+        </EditForm>
+    }
+</div>
+
+@code {
+    private readonly NewIssueForm _form = new();
+    private AuthUser? _tenant;
+    private List<TenantUnitOption> _tenantUnits = [];
+    private Issue? _successIssue;
+    private List<string> _mediaUrls = [];
+    private bool _hasPendingMedia;
+    private bool _isLoading = true;
+    private bool _isSubmitting;
+    private string? _pageError;
+    private string? _submitError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _tenant = await AuthService.GetCurrentUserAsync();
+            if (_tenant is null || _tenant.Role != UserRole.Tenant)
+            {
+                Navigation.NavigateTo("/login", replace: true);
+                return;
+            }
+
+            _tenantUnits = (await TenancyService.GetTenantUnitsAsync(_tenant.Id)).ToList();
+            if (_tenantUnits.Count == 0)
+            {
+                _pageError = "Your account has no active rental unit. Contact your landlord to link your tenancy before reporting an issue.";
+            }
+            else
+            {
+                _form.Unit = _tenantUnits[0].Id;
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to prepare a tenant issue report.");
+            _pageError = "We couldn't prepare the report form. Please return home and try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnMediaUploaded(List<string> urls)
+    {
+        _mediaUrls = urls;
+    }
+
+    private void OnPendingMediaChanged(bool hasPendingMedia)
+    {
+        _hasPendingMedia = hasPendingMedia;
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (_tenant is null || _isSubmitting)
+        {
+            _submitError = "Your session could not be verified. Sign in again before submitting.";
+            return;
+        }
+
+        _isSubmitting = true;
+        _submitError = null;
+        try
+        {
+            _successIssue = await IssueService.CreateIssueAsync(
+                _tenant,
+                _form.Unit,
+                _form.Title,
+                _form.Description,
+                _form.Severity,
+                _mediaUrls);
+        }
+        catch (InvalidOperationException exception)
+        {
+            // The service performs authoritative validation as well as the form's client-side checks.
+            _submitError = exception.Message;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to create an issue for tenant {TenantId}.", _tenant.Id);
+            _submitError = "Your report couldn't be submitted. Please try again.";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private sealed class NewIssueForm
+    {
+        [Required(ErrorMessage = "Your rental unit is required.")]
+        public string Unit { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Enter a short title for the issue.")]
+        [StringLength(100, ErrorMessage = "The title must be 100 characters or fewer.")]
+        public string Title { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Describe the issue so it can be addressed.")]
+        [StringLength(3000, MinimumLength = 10, ErrorMessage = "The description must be between 10 and 3,000 characters.")]
+        public string Description { get; set; } = string.Empty;
+
+        public Severity Severity { get; set; } = Severity.Medium;
+    }
+}

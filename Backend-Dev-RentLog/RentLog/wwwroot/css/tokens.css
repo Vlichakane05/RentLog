@@ -1,0 +1,225 @@
+/* ==========================================================================
+   Rent Log - Design tokens
+   Single source of truth for colours, spacing, radius, type and shadows.
+   Palette: blue / near-black / white. Theme is selected via
+   data-theme="light|dark" on <html>; defaults to the device setting
+   (prefers-color-scheme) when no explicit choice is stored.
+   ========================================================================== */
+
+:root {
+    /* Palette primitives */
+    --rl-blue-050: #EAF2FB;
+    --rl-blue-100: #D5E4F6;
+    --rl-blue-200: #ABC8ED;
+    --rl-blue-300: #7EA7E0;
+    --rl-blue-400: #4F83D1;
+    --rl-blue-500: #2F6BC2;
+    --rl-blue-600: #1F56A8;
+    --rl-blue-700: #18457F;
+    --rl-blue-800: #123357;
+    --rl-blue-900: #0C2438;
+    --rl-ink-900: #0B0E13;
+    --rl-ink-800: #10141B;
+    --rl-ink-700: #171C26;
+    --rl-ink-600: #1F2631;
+    --rl-white: #FFFFFF;
+
+    /* Spacing scale (4px base) */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+
+    /* Corner radius */
+    --radius-sm: 0.375rem;
+    --radius-md: 0.75rem;
+    --radius-lg: 1rem;
+    --radius-full: 999px;
+
+    /* Typography */
+    --font-family-base: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-md: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.375rem;
+    --font-size-2xl: 1.75rem;
+    --font-size-3xl: 2.25rem;
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    --line-height-tight: 1.25;
+    --line-height-base: 1.5;
+
+    /* Layout */
+    --shell-max-width: 72rem;
+    --topbar-height: 3.75rem;
+    --touch-target: 2.75rem; /* 44px minimum touch target */
+
+    /* Motion */
+    --transition-fast: 150ms ease-in-out;
+}
+
+/* ---- Light theme ---- */
+:root,
+[data-theme="light"] {
+    color-scheme: light;
+
+    /* Brand + interactive */
+    --color-primary: var(--rl-blue-600);
+    --color-primary-hover: var(--rl-blue-700);
+    --color-primary-active: var(--rl-blue-800);
+    --color-on-primary: var(--rl-white);
+    --color-primary-subtle-bg: var(--rl-blue-050);
+    --color-primary-subtle-text: var(--rl-blue-700);
+
+    /* Surfaces */
+    --color-bg: #F5F7FA;
+    --color-surface: var(--rl-white);
+    --color-surface-alt: #EEF1F5;
+    --color-border: #D7DCE3;
+    --color-border-strong: #AEB7C2;
+
+    /* Text (all AA on their surfaces) */
+    --color-text: var(--rl-ink-900);
+    --color-text-secondary: #465264;
+    --color-text-muted: #667185;
+    --color-text-on-dark: #F4F7FB;
+
+    /* Status */
+    --color-success: #1B7A3D;
+    --color-success-bg: #E6F4EA;
+    --color-warning: #8A5A00;
+    --color-warning-bg: #FCF1D6;
+    --color-danger: #C62F3B;
+    --color-danger-bg: #FBE9EA;
+    --color-info: var(--rl-blue-600);
+    --color-info-bg: var(--rl-blue-050);
+
+    /* Severity levels (icon + label always accompany colour) */
+    --color-severity-low: #1B7A3D;
+    --color-severity-low-bg: #E6F4EA;
+    --color-severity-medium: #8A5A00;
+    --color-severity-medium-bg: #FCF1D6;
+    --color-severity-high: #C24914;
+    --color-severity-high-bg: #FCE7DC;
+    --color-severity-emergency: #C62F3B;
+    --color-severity-emergency-bg: #FBE9EA;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgb(11 14 19 / 0.08);
+    --shadow-md: 0 2px 8px rgb(11 14 19 / 0.10);
+    --shadow-lg: 0 8px 24px rgb(11 14 19 / 0.14);
+
+    /* Focus ring */
+    --color-focus-ring: var(--rl-blue-500);
+}
+
+/* ---- Dark theme (explicit user choice) ---- */
+[data-theme="dark"] {
+    color-scheme: dark;
+
+    /* Brand + interactive */
+    --color-primary: var(--rl-blue-400);
+    --color-primary-hover: var(--rl-blue-300);
+    --color-primary-active: var(--rl-blue-200);
+    --color-on-primary: var(--rl-ink-900);
+    --color-primary-subtle-bg: var(--rl-blue-900);
+    --color-primary-subtle-text: var(--rl-blue-200);
+
+    /* Surfaces */
+    --color-bg: var(--rl-ink-900);
+    --color-surface: var(--rl-ink-800);
+    --color-surface-alt: var(--rl-ink-600);
+    --color-border: #2A323F;
+    --color-border-strong: #495364;
+
+    /* Text (all AA on their surfaces) */
+    --color-text: #F0F3F7;
+    --color-text-secondary: #AEB8C6;
+    --color-text-muted: #8B96A6;
+    --color-text-on-dark: #F4F7FB;
+
+    /* Status */
+    --color-success: #4CC26B;
+    --color-success-bg: #12281A;
+    --color-warning: #E8B64C;
+    --color-warning-bg: #2B2109;
+    --color-danger: #F4707B;
+    --color-danger-bg: #331014;
+    --color-info: var(--rl-blue-300);
+    --color-info-bg: var(--rl-blue-900);
+
+    /* Severity levels */
+    --color-severity-low: #4CC26B;
+    --color-severity-low-bg: #12281A;
+    --color-severity-medium: #E8B64C;
+    --color-severity-medium-bg: #2B2109;
+    --color-severity-high: #F08A4B;
+    --color-severity-high-bg: #33170A;
+    --color-severity-emergency: #F4707B;
+    --color-severity-emergency-bg: #331014;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.40);
+    --shadow-md: 0 2px 8px rgb(0 0 0 / 0.45);
+    --shadow-lg: 0 8px 24px rgb(0 0 0 / 0.55);
+
+    /* Focus ring */
+    --color-focus-ring: var(--rl-blue-300);
+}
+
+/* ---- Dark theme (device preference, no stored choice) ---- */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]):not([data-theme="dark"]) {
+        color-scheme: dark;
+
+        --color-primary: var(--rl-blue-400);
+        --color-primary-hover: var(--rl-blue-300);
+        --color-primary-active: var(--rl-blue-200);
+        --color-on-primary: var(--rl-ink-900);
+        --color-primary-subtle-bg: var(--rl-blue-900);
+        --color-primary-subtle-text: var(--rl-blue-200);
+
+        --color-bg: var(--rl-ink-900);
+        --color-surface: var(--rl-ink-800);
+        --color-surface-alt: var(--rl-ink-600);
+        --color-border: #2A323F;
+        --color-border-strong: #495364;
+
+        --color-text: #F0F3F7;
+        --color-text-secondary: #AEB8C6;
+        --color-text-muted: #8B96A6;
+        --color-text-on-dark: #F4F7FB;
+
+        --color-success: #4CC26B;
+        --color-success-bg: #12281A;
+        --color-warning: #E8B64C;
+        --color-warning-bg: #2B2109;
+        --color-danger: #F4707B;
+        --color-danger-bg: #331014;
+        --color-info: var(--rl-blue-300);
+        --color-info-bg: var(--rl-blue-900);
+
+        --color-severity-low: #4CC26B;
+        --color-severity-low-bg: #12281A;
+        --color-severity-medium: #E8B64C;
+        --color-severity-medium-bg: #2B2109;
+        --color-severity-high: #F08A4B;
+        --color-severity-high-bg: #33170A;
+        --color-severity-emergency: #F4707B;
+        --color-severity-emergency-bg: #331014;
+
+        --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.40);
+        --shadow-md: 0 2px 8px rgb(0 0 0 / 0.45);
+        --shadow-lg: 0 8px 24px rgb(0 0 0 / 0.55);
+
+        --color-focus-ring: var(--rl-blue-300);
+    }
+}

@@ -1,0 +1,519 @@
+@page "/landlord/issues/{IssueId}"
+@layout LandlordLayout
+@inject IAuthService AuthService
+@inject IIssueService IssueService
+@inject ILogger<LandlordIssueDetail> Logger
+@inject NavigationManager Navigation
+
+<PageTitle>@(_issue?.Title ?? "Issue details") | Rent Log</PageTitle>
+
+<div class="landlord-page">
+    <a class="back-link" href="/landlord/issues">← Back to issues</a>
+    @if (_isLoading)
+    {
+        <p role="status" class="text-secondary">Loading issue details...</p>
+        <LoadingSkeleton ShowCard="true" />
+        <LoadingSkeleton Lines="4" />
+    }
+    else if (_errorMessage is not null)
+    {
+        <div class="alert alert-danger" role="alert">@_errorMessage</div>
+    }
+    else if (_issue is not null)
+    {
+        <header class="issue-heading @(_issue.Severity == Severity.Emergency && _issue.Status != Status.Resolved ? "emergency-issue-heading" : string.Empty)">
+            @if (_issue.Severity == Severity.Emergency && _issue.Status != Status.Resolved)
+            {
+                <p class="emergency-label"><span aria-hidden="true">!</span> EMERGENCY · RESPOND IMMEDIATELY</p>
+            }
+            <p class="eyebrow">UNIT @_issue.Unit · REPORTED @_issue.CreatedAt.ToLocalTime().ToString("dd MMM yyyy", _zaCulture)</p>
+            <h1>@_issue.Title</h1>
+            <div class="detail-badges">
+                <SeverityBadge Severity="@_issue.Severity" />
+                <StatusBadge Status="@_issue.Status" />
+            </div>
+        </header>
+
+        @if (_issue.Status == Status.Open)
+        {
+            <section class="action-card card" aria-labelledby="acknowledge-heading">
+                <div>
+                    <h2 id="acknowledge-heading">Acknowledge this report</h2>
+                    <p class="text-secondary">Confirm that you’ve received the tenant’s report and are reviewing it.</p>
+                </div>
+                <button type="button" class="btn btn-primary" @onclick="AcknowledgeAsync" disabled="@_isSaving">Acknowledge issue</button>
+            </section>
+        }
+
+        @if (_issue.Status == Status.Disputed)
+        {
+            <section class="action-card dispute-card card" aria-labelledby="dispute-heading">
+                <h2 id="dispute-heading">Tenant disputes the resolution</h2>
+                <p class="text-secondary">Respond to the tenant. Continue the work, or mark it fixed again and return it for tenant confirmation.</p>
+                <EditForm Model="_disputeForm" class="action-form" FormName="landlord-dispute-response">
+                    <DataAnnotationsValidator />
+                    <div class="form-field">
+                        <label class="form-label" for="dispute-response">Your response</label>
+                        <InputTextArea id="dispute-response" class="input text-area" @bind-Value="_disputeForm.Response" rows="3" maxlength="2000" />
+                        <ValidationMessage For="@(() => _disputeForm.Response)" />
+                    </div>
+                    <div class="action-buttons">
+                        <button type="button" class="btn btn-primary" @onclick="() => RespondToDisputeAsync(false)" disabled="@_isSaving">Continue work</button>
+                        <button type="button" class="btn btn-secondary" @onclick="() => RespondToDisputeAsync(true)" disabled="@_isSaving">Mark fixed for confirmation</button>
+                    </div>
+                </EditForm>
+            </section>
+        }
+        else if (_issue.Status is Status.Acknowledged or Status.InProgress)
+        {
+            <section class="action-card card" aria-labelledby="work-heading">
+                <div>
+                    <h2 id="work-heading">Maintenance actions</h2>
+                    <p class="text-secondary">Acknowledge the report, record when the repair is complete, and keep the tenant informed.</p>
+                </div>
+                <div class="action-buttons">
+                    <button type="button" class="btn btn-primary" @onclick="ToggleFixedForm" aria-expanded="@_showFixedForm" aria-controls="fixed-form" disabled="@_isSaving">@(_showFixedForm ? "Close repair form" : "Mark fixed")</button>
+                </div>
+                @if (_showFixedForm)
+                {
+                    <EditForm Model="_fixedForm" OnValidSubmit="HandleFixedSubmitAsync" class="action-form" FormName="landlord-mark-fixed">
+                        <DataAnnotationsValidator />
+                        <div class="form-field">
+                            <label class="form-label" for="fixed-note">Work completed and repair details</label>
+                            <InputTextArea id="fixed-note" class="input text-area" @bind-Value="_fixedForm.Comment" rows="3" maxlength="2000" />
+                            <ValidationMessage For="@(() => _fixedForm.Comment)" />
+                        </div>
+                        <button type="submit" class="btn btn-primary" disabled="@_isSaving">Send for tenant confirmation</button>
+                    </EditForm>
+                }
+            </section>
+        }
+
+        @if (_actionError is not null)
+        {
+            <div class="alert alert-danger action-error" role="alert">@_actionError</div>
+        }
+        @if (_actionSuccess is not null)
+        {
+            <div class="alert alert-success action-success" role="status">@_actionSuccess</div>
+        }
+
+        <section class="card detail-section issue-notifications" aria-labelledby="timeline-heading">
+            <div class="alert alert-info" role="status"><strong>Issue update notifications</strong><br />Status changes, landlord actions, tenant confirmations, and comments are recorded below for both parties to review.</div>
+            <h2 id="timeline-heading">Issue history</h2>
+            <Timeline Events="@_issue.Events" />
+        </section>
+
+        <section class="card detail-section" aria-labelledby="media-heading">
+            <h2 id="media-heading">Photos and videos</h2>
+            <MediaGallery MediaItems="@GetMediaItems()" />
+        </section>
+
+        <section class="card detail-section" aria-labelledby="comment-heading">
+            <h2 id="comment-heading">Reply to tenant</h2>
+            <EditForm Model="_commentForm" OnValidSubmit="HandleCommentSubmitAsync" class="action-form" FormName="landlord-post-comment">
+                <DataAnnotationsValidator />
+                <div class="form-field">
+                    <label class="form-label" for="landlord-comment">Your comment</label>
+                    <InputTextArea id="landlord-comment" class="input text-area" @bind-Value="_commentForm.Comment" rows="3" maxlength="2000" placeholder="Share an update with the tenant..." />
+                    <ValidationMessage For="@(() => _commentForm.Comment)" />
+                </div>
+                <button type="submit" class="btn btn-primary" disabled="@_isSaving">Post comment</button>
+            </EditForm>
+        </section>
+    }
+</div>
+
+@code {
+    private static readonly CultureInfo _zaCulture = CultureInfo.GetCultureInfo("en-ZA");
+    private static readonly CultureInfo _moneyCulture = CultureInfo.GetCultureInfo("en-US");
+    [Parameter]
+    public string IssueId { get; set; } = string.Empty;
+
+    private AuthUser? _landlord;
+    private Issue? _issue;
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _showQuoteForm;
+    private bool _showFixedForm;
+    private string? _errorMessage;
+    private string? _actionError;
+    private string? _actionSuccess;
+    private IBrowserFile? _selectedQuoteFile;
+    private string? _selectedQuoteDataUrl;
+    private string? _selectedQuoteFileName;
+    private readonly CommentForm _commentForm = new();
+    private readonly QuoteForm _quoteForm = new();
+    private readonly FixedForm _fixedForm = new();
+    private readonly DisputeForm _disputeForm = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        try
+        {
+            _landlord = await AuthService.GetCurrentUserAsync();
+            if (_landlord is null || _landlord.Role != UserRole.Landlord)
+            {
+                Navigation.NavigateTo("/login", replace: true);
+                return;
+            }
+
+            _issue = await IssueService.GetLandlordIssueAsync(_landlord.Id, IssueId);
+            if (_issue is null)
+            {
+                _errorMessage = "This issue could not be found in your managed properties.";
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load landlord issue {IssueId}.", IssueId);
+            _errorMessage = "We couldn't load this issue. Please try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private Task AcknowledgeAsync() => SaveIssueActionAsync(() => IssueService.AcknowledgeAsync(_landlord!, IssueId));
+
+    private async Task HandleCommentSubmitAsync(EditContext editContext)
+    {
+        _actionError = null;
+        _actionSuccess = null;
+        await SubmitCommentAsync();
+    }
+
+    private async Task SubmitCommentAsync()
+    {
+        await SaveIssueActionAsync(() => IssueService.AddCommentAsync(_landlord!, IssueId, _commentForm.Comment));
+        if (_actionError is null)
+        {
+            _commentForm.Comment = string.Empty;
+            _actionSuccess = "Your comment was added to the issue history.";
+        }
+    }
+
+    private async Task HandleQuoteSubmitAsync(EditContext editContext)
+    {
+        _actionError = null;
+        _actionSuccess = null;
+        await SubmitQuoteAsync();
+    }
+
+    private async Task HandleFixedSubmitAsync(EditContext editContext)
+    {
+        _actionError = null;
+        _actionSuccess = null;
+        await MarkFixedAsync();
+    }
+
+    private async Task SubmitQuoteAsync()
+    {
+        if (_landlord is null || _issue is null || string.IsNullOrWhiteSpace(_selectedQuoteDataUrl) || string.IsNullOrWhiteSpace(_selectedQuoteFileName))
+        {
+            _actionError = "Select the contractor’s quote document before saving.";
+            return;
+        }
+
+        var extension = Path.GetExtension(_selectedQuoteFileName).ToLowerInvariant();
+        var contentType = extension switch
+        {
+            ".pdf" => "application/pdf",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            _ => string.Empty
+        };
+        if (string.IsNullOrEmpty(contentType))
+        {
+            _actionError = "Choose a PDF, JPG or PNG quote document.";
+            return;
+        }
+
+        _isSaving = true;
+        _actionError = null;
+        _actionSuccess = null;
+        try
+        {
+            // The file is read and cached inside the selection event. Do not attempt to
+            // reopen the browser file handle during a later submit event: browsers may
+            // invalidate the underlying JS file reference after the input changes.
+            var quote = await IssueService.AddQuoteAsync(
+                _landlord,
+                _issue.Id,
+                _quoteForm.ContractorName,
+                _quoteForm.Amount,
+                _quoteForm.WorkDescription,
+                _selectedQuoteFileName,
+                _selectedQuoteDataUrl);
+            if (quote is null)
+            {
+                _actionError = "The quote couldn't be attached to this issue.";
+                return;
+            }
+
+            await ReloadIssueAsync();
+            _showQuoteForm = false;
+            _quoteForm.Reset();
+            _selectedQuoteFile = null;
+            _selectedQuoteDataUrl = null;
+            _selectedQuoteFileName = null;
+            _actionSuccess = "The contractor quote and attachment were saved to the issue history.";
+        }
+        catch (InvalidOperationException exception)
+        {
+            _actionError = exception.Message;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to attach contractor quote to issue {IssueId}.", IssueId);
+            _actionError = "The quote couldn't be saved. Please try again.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void ToggleQuoteForm()
+    {
+        if (_isSaving) return;
+        _actionError = null;
+        _actionSuccess = null;
+        _showQuoteForm = !_showQuoteForm;
+        if (!_showQuoteForm)
+        {
+            _selectedQuoteFile = null;
+            _selectedQuoteDataUrl = null;
+            _selectedQuoteFileName = null;
+            _quoteForm.Reset();
+        }
+    }
+
+    private void ToggleFixedForm()
+    {
+        if (_isSaving) return;
+        _actionError = null;
+        _actionSuccess = null;
+        _showFixedForm = !_showFixedForm;
+        if (!_showFixedForm) _fixedForm.Comment = string.Empty;
+    }
+
+    private async Task OnQuoteFileSelected(InputFileChangeEventArgs args)
+    {
+        _actionError = null;
+        _actionSuccess = null;
+        _selectedQuoteFile = null;
+        _selectedQuoteDataUrl = null;
+        _selectedQuoteFileName = null;
+
+        try
+        {
+            var file = args.File;
+            if (file.Size <= 0 || file.Size > 10 * 1024 * 1024)
+            {
+                _actionError = "The quote document must be larger than 0 bytes and no more than 10 MB.";
+                return;
+            }
+            if (!IsAllowedQuoteFile(file))
+            {
+                _actionError = "Choose a PDF, JPG or PNG quote document.";
+                return;
+            }
+
+            var extension = Path.GetExtension(file.Name).ToLowerInvariant();
+            var contentType = extension switch
+            {
+                ".pdf" => "application/pdf",
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".png" => "image/png",
+                _ => throw new InvalidOperationException("Choose a PDF, JPG or PNG quote document.")
+            };
+
+            // Read the browser file during the selection event and catch failures here,
+            // so a file-read error is reported in the UI instead of escaping the event.
+            await using var stream = file.OpenReadStream(10 * 1024 * 1024);
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+            _selectedQuoteDataUrl = $"data:{contentType};base64,{Convert.ToBase64String(memoryStream.ToArray())}";
+            _selectedQuoteFileName = Path.GetFileName(file.Name);
+            _selectedQuoteFile = file;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Could not read selected contractor quote for issue {IssueId}.", IssueId);
+            _selectedQuoteFile = null;
+            _selectedQuoteDataUrl = null;
+            _selectedQuoteFileName = null;
+            _actionError = "The quote file could not be read. Choose a PDF, JPG or PNG file smaller than 10 MB and try again.";
+        }
+    }
+
+    private static bool IsAllowedQuoteFile(IBrowserFile file)
+    {
+        var extension = Path.GetExtension(file.Name).ToLowerInvariant();
+        var contentType = file.ContentType.ToLowerInvariant();
+        return extension switch
+        {
+            ".pdf" => contentType is "application/pdf" or "application/octet-stream",
+            ".jpg" or ".jpeg" => contentType is "image/jpeg" or "application/octet-stream",
+            ".png" => contentType is "image/png" or "application/octet-stream",
+            _ => false
+        };
+    }
+
+    private Task ApproveQuoteAsync(string quoteId) => SaveIssueActionAsync(() => IssueService.ApproveQuoteAsync(_landlord!, IssueId, quoteId));
+
+    private async Task MarkFixedAsync()
+    {
+        await SaveIssueActionAsync(() => IssueService.MarkFixedAsync(_landlord!, IssueId, _fixedForm.Comment));
+        if (_actionError is null)
+        {
+            _showFixedForm = false;
+            _fixedForm.Comment = string.Empty;
+            _actionSuccess = "The issue was marked as fixed and sent to the tenant for confirmation.";
+        }
+    }
+
+    private async Task RespondToDisputeAsync(bool markFixedAgain)
+    {
+        if (string.IsNullOrWhiteSpace(_disputeForm.Response) || _disputeForm.Response.Trim().Length < 2)
+        {
+            _actionError = "Write a response to the tenant before continuing.";
+            return;
+        }
+
+        await SaveIssueActionAsync(() => IssueService.RespondToDisputeAsync(_landlord!, IssueId, _disputeForm.Response, markFixedAgain));
+        if (_actionError is null)
+        {
+            _disputeForm.Response = string.Empty;
+        }
+    }
+
+    private async Task SaveIssueActionAsync(Func<Task<Issue?>> action)
+    {
+        if (_landlord is null || _issue is null || _isSaving)
+        {
+            _actionError = "Your session could not be verified. Sign in again before updating this issue.";
+            return;
+        }
+
+        _isSaving = true;
+        _actionError = null;
+        _actionSuccess = null;
+        try
+        {
+            var updatedIssue = await action();
+            if (updatedIssue is null)
+            {
+                _actionError = "That update could not be applied. Refresh the issue and try again.";
+                return;
+            }
+
+            _issue = updatedIssue;
+            _actionSuccess = "Your update was saved.";
+        }
+        catch (InvalidOperationException exception)
+        {
+            _actionError = exception.Message;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to update landlord issue {IssueId}.", IssueId);
+            _actionError = "Your update couldn't be saved. Please try again.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task ReloadIssueAsync()
+    {
+        _issue = await IssueService.GetLandlordIssueAsync(_landlord!.Id, IssueId);
+        if (_issue is null)
+        {
+            throw new InvalidOperationException("The issue disappeared after attaching its contractor quote.");
+        }
+    }
+
+    private List<MediaFile> GetMediaItems()
+    {
+        return _issue?.Events
+            .SelectMany(item => item.MediaUrls.Select(url => new MediaFile
+            {
+                Id = $"{item.Id}-{url}",
+                FileName = GetMediaFileName(url),
+                MimeType = GetMimeType(url),
+                Base64Data = url,
+                ThumbnailBase64 = url,
+                AltText = item.Description
+            }))
+            .ToList() ?? [];
+    }
+
+    private static string GetMimeType(string url)
+    {
+        var path = Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.AbsolutePath : url;
+        return Path.GetExtension(path).ToLowerInvariant() switch
+        {
+            ".png" => "image/png",
+            ".heic" => "image/heic",
+            ".mp4" => "video/mp4",
+            ".mov" => "video/quicktime",
+            _ => "image/jpeg"
+        };
+    }
+
+    private static string GetMediaFileName(string url)
+    {
+        var path = Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.AbsolutePath : url;
+        return Path.GetFileName(path);
+    }
+
+    private static string FormatCurrency(decimal amount) => $"R {amount.ToString("N2", _moneyCulture)}";
+
+    private sealed class CommentForm
+    {
+        [Required(ErrorMessage = "Write a comment before posting.")]
+        [StringLength(2000, MinimumLength = 2, ErrorMessage = "Your comment must be between 2 and 2,000 characters.")]
+        public string Comment { get; set; } = string.Empty;
+    }
+
+    private sealed class QuoteForm
+    {
+        [Required(ErrorMessage = "Enter the contractor's name.")]
+        [StringLength(120)]
+        public string ContractorName { get; set; } = string.Empty;
+
+        [Range(typeof(decimal), "0.01", "100000000", ErrorMessage = "Enter a quote amount greater than zero.")]
+        public decimal Amount { get; set; }
+
+        [Required(ErrorMessage = "Describe the work included in the quote.")]
+        [StringLength(1000, MinimumLength = 5, ErrorMessage = "Describe the work in at least 5 characters.")]
+        public string WorkDescription { get; set; } = string.Empty;
+
+        public void Reset()
+        {
+            ContractorName = string.Empty;
+            Amount = 0;
+            WorkDescription = string.Empty;
+        }
+    }
+
+    private sealed class FixedForm
+    {
+        [Required(ErrorMessage = "Describe the repair completed.")]
+        [StringLength(2000, MinimumLength = 5, ErrorMessage = "Describe the repair in at least 5 characters.")]
+        public string Comment { get; set; } = string.Empty;
+    }
+
+    private sealed class DisputeForm
+    {
+        [Required(ErrorMessage = "Write a response to the tenant.")]
+        [StringLength(2000, MinimumLength = 2, ErrorMessage = "Your response must be at least 2 characters.")]
+        public string Response { get; set; } = string.Empty;
+    }
+}

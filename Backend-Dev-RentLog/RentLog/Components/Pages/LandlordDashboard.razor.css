@@ -1,0 +1,424 @@
+.landlord-dashboard {
+    width: min(100%, 90rem);
+    margin: 0 auto;
+}
+
+.dashboard-heading,
+.panel-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+}
+
+.dashboard-heading {
+    margin-bottom: var(--space-6);
+}
+
+.dashboard-heading > div > p:last-child {
+    margin-bottom: 0;
+}
+
+.eyebrow {
+    margin-bottom: var(--space-2);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.05em;
+}
+
+.dashboard-heading .eyebrow {
+    margin-bottom: var(--space-2);
+}
+
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-4);
+    margin-bottom: var(--space-5);
+}
+
+.kpi-grid ::deep .kpi-card {
+    min-width: 0;
+    padding: var(--space-4);
+}
+
+.kpi-grid ::deep .kpi-value {
+    overflow-wrap: anywhere;
+    font-size: clamp(var(--font-size-xl), 2vw, var(--font-size-3xl));
+}
+
+.kpi-grid ::deep .kpi-subtext {
+    min-height: 2.8em;
+    color: var(--color-text-secondary);
+}
+
+.kpi-grid ::deep .kpi-emergency {
+    border-color: var(--color-danger);
+    background: var(--color-danger-bg);
+}
+
+.kpi-grid ::deep .kpi-emergency .kpi-icon {
+    background: var(--color-danger);
+    color: var(--rl-white);
+}
+
+.emergency-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    margin-bottom: var(--space-5);
+    padding: var(--space-5);
+    border: 2px solid var(--color-danger);
+    border-left-width: 0.5rem;
+    border-radius: var(--radius-lg);
+    background: var(--color-danger-bg);
+    color: var(--color-text);
+    box-shadow: var(--shadow-md);
+}
+
+.emergency-banner .eyebrow,
+.emergency-banner p:last-child {
+    margin-bottom: var(--space-1);
+}
+
+.emergency-banner .eyebrow,
+.emergency-banner h2 {
+    color: var(--color-danger);
+}
+
+.emergency-symbol {
+    display: grid;
+    flex: 0 0 3rem;
+    width: 3rem;
+    height: 3rem;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--color-danger);
+    color: var(--rl-white);
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+}
+
+.emergency-action {
+    flex: 0 0 auto;
+    background: var(--color-danger);
+    color: var(--rl-white);
+}
+
+.emergency-action:hover {
+    background: var(--color-danger);
+    filter: brightness(0.9);
+}
+
+.dashboard-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(18rem, 0.85fr);
+    align-items: start;
+    gap: var(--space-5);
+}
+
+.panel {
+    min-width: 0;
+    padding: var(--space-5);
+}
+
+.panel-heading {
+    align-items: center;
+    margin-bottom: var(--space-4);
+}
+
+.panel-heading h2 {
+    margin: 0;
+    font-size: var(--font-size-lg);
+}
+
+.panel-heading .eyebrow {
+    margin-bottom: var(--space-1);
+}
+
+.panel-heading > a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    flex: 0 0 auto;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+}
+
+.priority-list,
+.job-list,
+.overdue-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.priority-list {
+    gap: var(--space-3);
+}
+
+.priority-item {
+    min-width: 0;
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-left-width: 4px;
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+}
+
+.priority-emergency {
+    border-color: var(--color-danger);
+    background: var(--color-danger-bg);
+    box-shadow: var(--shadow-sm);
+}
+
+.priority-high {
+    border-left-color: var(--color-severity-high);
+}
+
+.priority-item-heading {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+.priority-item h3 {
+    margin-bottom: var(--space-1);
+}
+
+.priority-item h3 a {
+    color: var(--color-text);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+
+.priority-item p {
+    margin-bottom: var(--space-2);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.priority-action {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    font-weight: var(--font-weight-semibold);
+}
+
+.ledger-totals {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+}
+
+.ledger-totals > div {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-alt);
+}
+
+.ledger-totals span {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.ledger-totals strong {
+    overflow-wrap: anywhere;
+}
+
+.amount-overdue {
+    color: var(--color-danger);
+}
+
+.overdue-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.overdue-row:last-child {
+    border-bottom: 0;
+}
+
+.overdue-row > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-1) var(--space-3);
+    align-items: baseline;
+}
+
+.overdue-row > div span {
+    grid-column: 1;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.overdue-row > div strong:last-child {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    text-align: right;
+}
+
+.reminder-button {
+    width: 100%;
+    font-size: var(--font-size-sm);
+}
+
+.reminder-status,
+.reminder-feedback {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.reminder-feedback {
+    margin: var(--space-3) 0 0;
+}
+
+.job-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 4.5rem;
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text);
+    text-decoration: none;
+}
+
+.job-row:last-child {
+    border-bottom: 0;
+}
+
+.job-icon {
+    display: grid;
+    flex: 0 0 2.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    place-items: center;
+    border-radius: var(--radius-md);
+    background: var(--color-primary-subtle-bg);
+    color: var(--color-primary);
+    font-size: var(--font-size-lg);
+}
+
+.job-info {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+}
+
+.job-info strong,
+.job-info span {
+    overflow-wrap: anywhere;
+}
+
+.job-info span {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.job-arrow {
+    color: var(--color-primary);
+}
+
+.quick-action {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr) 1rem;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: var(--touch-target);
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text);
+    font-weight: var(--font-weight-medium);
+    text-decoration: none;
+}
+
+.quick-action:last-child {
+    border-bottom: 0;
+}
+
+.quick-action span:first-child {
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    place-items: center;
+    border-radius: var(--radius-sm);
+    background: var(--color-primary-subtle-bg);
+    color: var(--color-primary);
+}
+
+.quick-action span:last-child {
+    color: var(--color-primary);
+}
+
+@media (max-width: 68rem) {
+    .kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .dashboard-columns {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 48rem) {
+    .dashboard-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .dashboard-heading .btn {
+        width: 100%;
+    }
+
+    .dashboard-columns {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .emergency-banner {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        padding: var(--space-4);
+    }
+
+    .emergency-banner > div {
+        flex: 1 1 calc(100% - 4rem);
+    }
+
+    .emergency-action {
+        width: 100%;
+    }
+}
+
+@media (max-width: 23rem) {
+    .kpi-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .panel {
+        padding: var(--space-4);
+    }
+
+    .panel-heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: var(--space-2);
+    }
+
+    .emergency-symbol {
+        flex-basis: 2.5rem;
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+}

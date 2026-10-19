@@ -1,0 +1,18 @@
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <RoleRouteView RouteData="@routeData" />
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <PageTitle>Page not found | Rent Log</PageTitle>
+                <section class="card route-not-found">
+                    <h1>Page not found</h1>
+                    <p class="text-secondary">The page you requested could not be found.</p>
+                    <a class="btn btn-primary" href="/">Go to Rent Log</a>
+                </section>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>

@@ -1,0 +1,95 @@
+.dashboard-welcome {
+    width: min(100%, 54rem);
+    margin: 0 auto var(--space-5);
+}
+
+.dashboard-welcome p:last-child {
+    margin-bottom: 0;
+}
+
+.eyebrow {
+    margin-bottom: var(--space-2);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.05em;
+}
+
+.rent-summary,
+.tenant-issues {
+    width: min(100%, 54rem);
+    margin-right: auto;
+    margin-left: auto;
+}
+
+.rent-summary {
+    padding: var(--space-4);
+    border-left: 4px solid var(--color-primary);
+}
+
+.rent-summary-top,
+.section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.rent-summary-top h2,
+.section-heading h2 {
+    margin-bottom: 0;
+}
+
+.rent-summary-top .eyebrow,
+.section-heading .eyebrow {
+    margin-bottom: var(--space-1);
+}
+
+.rent-amount {
+    margin: var(--space-4) 0 var(--space-1);
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+}
+
+.rent-due {
+    margin-bottom: var(--space-4);
+    color: var(--color-text-secondary);
+}
+
+.rent-summary > .btn {
+    width: 100%;
+}
+
+.tenant-issues {
+    margin-top: var(--space-8);
+}
+
+.section-heading {
+    align-items: flex-end;
+    margin-bottom: var(--space-4);
+}
+
+.report-issue-link {
+    flex: 0 0 auto;
+}
+
+.tenant-issue-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.issue-detail-link {
+    width: 100%;
+}
+
+@media (max-width: 23rem) {
+    .section-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .report-issue-link {
+        width: 100%;
+    }
+}

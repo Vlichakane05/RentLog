@@ -1,0 +1,13 @@
+<main class="auth-page">
+    <section class="auth-card" aria-labelledby="@TitleId">
+        @ChildContent
+    </section>
+</main>
+
+@code {
+    [Parameter, EditorRequired]
+    public string TitleId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public RenderFragment ChildContent { get; set; } = default!;
+}

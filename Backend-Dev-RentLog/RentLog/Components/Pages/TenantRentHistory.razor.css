@@ -1,0 +1,73 @@
+.tenant-page {
+    width: min(100%, 48rem);
+    margin: 0 auto;
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    margin-bottom: var(--space-3);
+    font-weight: var(--font-weight-medium);
+    text-decoration: none;
+}
+
+.page-heading {
+    margin-bottom: var(--space-6);
+}
+
+.page-heading p:last-child {
+    margin-bottom: 0;
+}
+
+.eyebrow {
+    margin-bottom: var(--space-2);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.04em;
+}
+
+.rent-entry-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.rent-entry {
+    padding: var(--space-4);
+}
+
+.rent-entry-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-2);
+}
+
+.rent-entry-heading h2 {
+    margin-bottom: var(--space-1);
+    font-size: var(--font-size-lg);
+}
+
+.rent-entry-heading p {
+    margin: 0;
+    font-size: var(--font-size-sm);
+}
+
+.rent-entry-amount {
+    margin: var(--space-4) 0 var(--space-1);
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+}
+
+.rent-payment-date {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.overdue-copy {
+    color: var(--color-danger);
+    font-weight: var(--font-weight-medium);
+}

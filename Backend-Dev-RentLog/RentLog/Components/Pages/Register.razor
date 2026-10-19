@@ -1,0 +1,105 @@
+@page "/register"
+@attribute [AllowAnonymous]
+@inject IAuthService AuthService
+@inject ILogger<Register> Logger
+@inject NavigationManager Navigation
+
+<PageTitle>Create account | Rent Log</PageTitle>
+
+<AuthPage TitleId="register-title">
+    <a class="brand" href="/" aria-label="Rent Log home">
+        <span class="brand-mark" aria-hidden="true">R</span>
+        <span>Rent Log</span>
+    </a>
+    <div class="login-heading">
+        <h1 id="register-title">Create your account</h1>
+        <p class="text-secondary">Join Rent Log to manage your rental records.</p>
+    </div>
+
+    <EditForm Model="_form" OnValidSubmit="RegisterAsync">
+        <DataAnnotationsValidator />
+        <div class="form-field">
+            <label class="form-label" for="full-name">Full name</label>
+            <InputText id="full-name" class="input" autocomplete="name" @bind-Value="_form.FullName" disabled="@_isLoading" />
+            <ValidationMessage For="@(() => _form.FullName)" />
+        </div>
+        <div class="form-field">
+            <label class="form-label" for="register-email">Email address</label>
+            <InputText id="register-email" class="input" type="email" autocomplete="email" @bind-Value="_form.Email" disabled="@_isLoading" />
+            <ValidationMessage For="@(() => _form.Email)" />
+        </div>
+        <div class="form-field">
+            <label class="form-label" for="account-role">I am registering as</label>
+            <InputSelect id="account-role" class="input" @bind-Value="_form.Role" disabled="@_isLoading">
+                <option value="Tenant">Tenant</option>
+                <option value="Landlord">Landlord</option>
+            </InputSelect>
+        </div>
+        <div class="form-field">
+            <label class="form-label" for="register-password">Password</label>
+            <InputText id="register-password" class="input" type="password" autocomplete="new-password" @bind-Value="_form.Password" disabled="@_isLoading" />
+            <ValidationMessage For="@(() => _form.Password)" />
+            <p class="field-hint">Use at least 8 characters.</p>
+        </div>
+        <div class="form-field">
+            <label class="form-label" for="confirm-password">Confirm password</label>
+            <InputText id="confirm-password" class="input" type="password" autocomplete="new-password" @bind-Value="_form.ConfirmPassword" disabled="@_isLoading" />
+            <ValidationMessage For="@(() => _form.ConfirmPassword)" />
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_errorMessage))
+        {
+            <div class="alert alert-danger" role="alert">@_errorMessage</div>
+        }
+        <button class="btn btn-primary sign-in-button" type="submit" disabled="@_isLoading">
+            @if (_isLoading) { <span class="loading-spinner" aria-hidden="true"></span><span>Creating account...</span> }
+            else { <span>Create account</span> }
+        </button>
+    </EditForm>
+    <p class="register-prompt">Already have an account? <a href="/login">Sign in</a></p>
+</AuthPage>
+
+@code {
+    private readonly RegisterForm _form = new();
+    private bool _isLoading;
+    private string? _errorMessage;
+
+    private async Task RegisterAsync()
+    {
+        _errorMessage = null;
+        if (!string.Equals(_form.Password, _form.ConfirmPassword, StringComparison.Ordinal))
+        {
+            _errorMessage = "The passwords do not match.";
+            return;
+        }
+        _isLoading = true;
+        try
+        {
+            await AuthService.RegisterAsync(_form.FullName, _form.Email, _form.Password, _form.Role);
+            Navigation.NavigateTo("/login?registered=1", replace: true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Rent Log account registration failed.");
+            _errorMessage = ex is InvalidOperationException ? ex.Message : "We couldn't create your account. Check your connection and try again.";
+        }
+        finally { _isLoading = false; }
+    }
+
+    private sealed class RegisterForm
+    {
+        [Required(ErrorMessage = "Enter your full name.")]
+        [StringLength(120, MinimumLength = 2, ErrorMessage = "Your name must be between 2 and 120 characters.")]
+        public string FullName { get; set; } = string.Empty;
+        [Required(ErrorMessage = "Enter your email address.")]
+        [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+        [StringLength(256)]
+        public string Email { get; set; } = string.Empty;
+        [Required(ErrorMessage = "Create a password.")]
+        [MinLength(8, ErrorMessage = "Your password must contain at least 8 characters.")]
+        public string Password { get; set; } = string.Empty;
+        [Required(ErrorMessage = "Confirm your password.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+        public UserRole Role { get; set; } = UserRole.Tenant;
+    }
+}

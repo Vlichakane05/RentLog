@@ -1,0 +1,16 @@
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var destination = authenticationState.User.IsInRole(nameof(UserRole.Tenant))
+            ? "/tenant"
+            : authenticationState.User.IsInRole(nameof(UserRole.Landlord))
+                ? "/landlord"
+                : "/login";
+
+        Navigation.NavigateTo(destination, replace: true);
+    }
+}
