@@ -1,6 +1,0 @@
-wwwroot\app.css
-wwwroot\css\app.css
-wwwroot\css\tokens.css
-C:\Users\User\source\repos\RentLog0\RentLog\wwwroot\app.css
-C:\Users\User\source\repos\RentLog0\RentLog\wwwroot\css\app.css
-C:\Users\User\source\repos\RentLog0\RentLog\wwwroot\css\tokens.css
