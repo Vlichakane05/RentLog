@@ -1,0 +1,240 @@
+@page "/landlord/approvals"
+@layout LandlordLayout
+@inject IAuthService AuthService
+@inject ILandlordContractorJobsService LandlordJobsService
+@inject ILandlordContractorManagementService ContractorManagementService
+@inject ILogger<LandlordApprovals> Logger
+@inject NavigationManager Navigation
+
+<PageTitle>Job approvals | Rent Log</PageTitle>
+
+<div class="landlord-page landlord-approvals">
+    <header class="page-heading">
+        <p class="eyebrow">CONTRACTOR WORKFLOW</p>
+        <h1>Job approvals</h1>
+        <p class="text-secondary">Review contractor claims before approving access to begin work.</p>
+    </header>
+
+    @if (_isLoading)
+    {
+        <p role="status" class="text-secondary">Loading jobs awaiting approval...</p>
+        <LoadingSkeleton Lines="5" />
+    }
+    else if (_errorMessage is not null)
+    {
+        <div class="alert alert-danger" role="alert">@_errorMessage</div>
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(_actionMessage))
+        {
+            <div class="alert alert-success" role="status">@_actionMessage</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(_actionError))
+        {
+            <div class="alert alert-danger" role="alert">@_actionError</div>
+        }
+
+        @if (PendingJobs.Count == 0)
+        {
+            <EmptyState Icon="✓" Title="No jobs awaiting approval" Message="When a contractor claims a released job, it will appear here for your review." />
+        }
+        else
+        {
+            <div class="approval-list">
+                @foreach (var job in PendingJobs)
+                {
+                    var matchingContractors = MatchingContractors(job);
+                    <article class="approval-card" @key="job.IssueId">
+                        <div class="approval-card-top">
+                            <SeverityBadge Severity="@job.Severity" />
+                            <span class="approval-status">Pending approval</span>
+                        </div>
+                        <h2><a href="@($"/landlord/issues/{job.IssueId}")">@job.Title</a></h2>
+                        <p class="approval-meta">Unit @job.UnitNumber · @job.Category</p>
+                        <dl class="claim-details">
+                            <div>
+                                <dt>Claiming contractor</dt>
+                                <dd>@job.ContractorName</dd>
+                            </div>
+                            <div>
+                                <dt>Trade</dt>
+                                <dd>@job.Category</dd>
+                            </div>
+                        </dl>
+                        <section class="preferred-windows" aria-label="Tenant preferred time windows">
+                            <h3>Tenant preferred time windows</h3>
+                            @if (job.PreferredWindows.Count == 0)
+                            {
+                                <p class="text-secondary">No preferred windows were provided.</p>
+                            }
+                            else
+                            {
+                                <ul>
+                                    @foreach (var window in job.PreferredWindows)
+                                    {
+                                        <li>@window</li>
+                                    }
+                                </ul>
+                            }
+                        </section>
+                        <div class="approval-actions">
+                            <button type="button" class="btn btn-primary" @onclick="() => ApproveAsync(job)" disabled="@IsSaving(job)">Approve</button>
+                            <button type="button" class="btn btn-secondary" @onclick="() => ReturnToBoardAsync(job, rejected: true)" disabled="@IsSaving(job)">Reject</button>
+                            <button type="button" class="btn btn-secondary" @onclick="() => ToggleReassignment(job.IssueId)" disabled="@IsSaving(job)">
+                                @(_reassignJobId == job.IssueId ? "Cancel reassignment" : "Reassign")
+                            </button>
+                        </div>
+                        @if (_reassignJobId == job.IssueId)
+                        {
+                            <div class="reassign-panel">
+                                <p>Return this job to the contractor board, or assign it to an active contractor with the matching trade.</p>
+                                <button type="button" class="btn btn-secondary" @onclick="() => ReturnToBoardAsync(job, rejected: false)" disabled="@IsSaving(job)">Return to contractor board</button>
+                                @if (matchingContractors.Count == 0)
+                                {
+                                    <p class="text-secondary">There are no active linked contractors for @job.Category. Return the job to the board so another contractor can claim it.</p>
+                                }
+                                else
+                                {
+                                    <label class="form-label" for="@($"reassign-{job.IssueId}")">Choose a contractor</label>
+                                    <select id="@($"reassign-{job.IssueId}")" class="input" @bind="_selectedContractors[job.IssueId]">
+                                        <option value="">Choose a contractor</option>
+                                        @foreach (var contractor in matchingContractors)
+                                        {
+                                            <option value="@contractor.Id">@contractor.DisplayName</option>
+                                        }
+                                    </select>
+                                    <button type="button" class="btn btn-primary" @onclick="() => ReassignToContractorAsync(job)" disabled="@(IsSaving(job) || string.IsNullOrWhiteSpace(SelectedContractor(job.IssueId)))">Assign selected contractor</button>
+                                }
+                            </div>
+                        }
+                    </article>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private AuthUser? _landlord;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private string? _actionMessage;
+    private string? _actionError;
+    private string? _savingIssueId;
+    private string? _reassignJobId;
+    private readonly Dictionary<string, string> _selectedContractors = [];
+    private List<ContractorJob> _jobs = [];
+    private List<ContractorAccount> _contractors = [];
+
+    private List<ContractorJob> PendingJobs => _jobs
+        .Where(job => job.ContractorStatus == ContractorStatus.PendingApproval)
+        .OrderByDescending(job => job.Severity == Severity.Emergency)
+        .ThenByDescending(job => job.AcceptedAt)
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _landlord = await AuthService.GetCurrentUserAsync();
+            if (_landlord is null || _landlord.Role != UserRole.Landlord)
+            {
+                Navigation.NavigateTo("/login", replace: true);
+                return;
+            }
+
+            await LoadDataAsync();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load landlord job approvals.");
+            _errorMessage = "We couldn't load jobs awaiting approval. Please try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        var landlord = _landlord ?? throw new InvalidOperationException("The landlord session is not available.");
+        _jobs = (await LandlordJobsService.GetLandlordJobsAsync(landlord)).ToList();
+        _contractors = (await ContractorManagementService.GetLandlordContractorsAsync(landlord)).ToList();
+        foreach (var job in PendingJobs)
+        {
+            _selectedContractors.TryAdd(job.IssueId, string.Empty);
+        }
+    }
+
+    private List<ContractorAccount> MatchingContractors(ContractorJob job) =>
+        _contractors.Where(contractor => contractor.Active &&
+                job.Category is not null &&
+                contractor.Id != job.AssignedContractorId &&
+                (contractor.AllUnits || contractor.AccessibleUnitIds.Contains(job.UnitId, StringComparer.OrdinalIgnoreCase)) &&
+                contractor.Trades.Contains(job.Category, StringComparer.OrdinalIgnoreCase))
+            .OrderBy(contractor => contractor.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private string? SelectedContractor(string issueId) =>
+        _selectedContractors.TryGetValue(issueId, out var contractorId) ? contractorId : null;
+
+    private bool IsSaving(ContractorJob job) => _savingIssueId == job.IssueId;
+
+    private void ToggleReassignment(string issueId) =>
+        _reassignJobId = _reassignJobId == issueId ? null : issueId;
+
+    private Task ApproveAsync(ContractorJob job) =>
+        SaveJobActionAsync(job, () => LandlordJobsService.ApproveJobAsync(_landlord!, job.IssueId),
+            $"Approved {job.Title}.");
+
+    private Task ReturnToBoardAsync(ContractorJob job, bool rejected) =>
+        SaveJobActionAsync(job, () => LandlordJobsService.ReturnJobToBoardAsync(_landlord!, job.IssueId),
+            rejected ? $"Rejected {job.Title}; it is back on the contractor board." : $"Returned {job.Title} to the contractor board.");
+
+    private Task ReassignToContractorAsync(ContractorJob job)
+    {
+        var contractorId = SelectedContractor(job.IssueId);
+        if (string.IsNullOrWhiteSpace(contractorId))
+        {
+            _actionError = "Choose an active contractor before assigning this job.";
+            return Task.CompletedTask;
+        }
+
+        var contractorName = MatchingContractors(job)
+            .FirstOrDefault(contractor => contractor.Id == contractorId)?.DisplayName ?? "the selected contractor";
+        return SaveJobActionAsync(job,
+            () => LandlordJobsService.ReassignJobAsync(_landlord!, job.IssueId, contractorId),
+            $"Reassigned {job.Title} to {contractorName}.");
+    }
+
+    private async Task SaveJobActionAsync(ContractorJob job, Func<Task> action, string successMessage)
+    {
+        if (_landlord is null || _savingIssueId is not null)
+        {
+            return;
+        }
+
+        _savingIssueId = job.IssueId;
+        _actionError = null;
+        _actionMessage = null;
+        try
+        {
+            await LandlordJobsService.MarkJobSeenAsync(_landlord, job.IssueId);
+            await action();
+            _actionMessage = successMessage;
+            _reassignJobId = null;
+            await LoadDataAsync();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to update landlord job {IssueId}.", job.IssueId);
+            _actionError = "The job couldn't be updated. Refresh the page and try again.";
+        }
+        finally
+        {
+            _savingIssueId = null;
+        }
+    }
+}

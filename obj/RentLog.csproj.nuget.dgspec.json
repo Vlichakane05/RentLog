@@ -52,6 +52,10 @@
           "framework": "net9.0",
           "targetAlias": "net9.0",
           "dependencies": {
+            "QRCoder": {
+              "target": "Package",
+              "version": "[1.8.0, )"
+            },
             "Supabase": {
               "target": "Package",
               "version": "[8.3.1, )"

@@ -1,17 +1,253 @@
 @page "/register"
 @page "/invite"
 @attribute [AllowAnonymous]
+@inject IAuthService AuthService
+@inject IRegistrationService RegistrationService
+@inject RentLogAuthStateProvider AuthenticationStateProvider
+@inject ILogger<Registration> Logger
+@inject NavigationManager Navigation
 
 <PageTitle>Join Rent Log</PageTitle>
 
 <AuthPage TitleId="registration-title">
-        <a class="brand" href="/" aria-label="Rent Log home">
-            <span class="brand-mark" aria-hidden="true">R</span>
-            <span>Rent Log</span>
-        </a>
-        <div class="login-heading">
-            <h1 id="registration-title">Join Rent Log</h1>
-            <p class="text-secondary">Registration and invitation acceptance will be available when account services are connected. Ask your landlord or property manager for an invite.</p>
-        </div>
+    <a class="brand" href="/" aria-label="Rent Log home">
+        <span class="brand-mark" aria-hidden="true">R</span>
+        <span>Rent Log</span>
+    </a>
+    <div class="login-heading">
+        <h1 id="registration-title">Join your rental</h1>
+        @if (_preview.Status == "valid")
+        {
+            <p class="text-secondary">Your invitation is for <strong>@_preview.BuildingName</strong>, unit <strong>@_preview.UnitName</strong>.</p>
+        }
+        else
+        {
+            <p class="text-secondary">Register with the unit invitation sent by your landlord.</p>
+        }
+    </div>
+
+    @if (_isLoading)
+    {
+        <p role="status" class="route-status">Checking your invitation...</p>
+    }
+    else if (_preview.Status != "valid")
+    {
+        <div class="alert alert-danger" role="alert">@GetInviteMessage(_preview.Status)</div>
         <a class="btn btn-primary sign-in-button" href="/login">Back to sign in</a>
+    }
+    else if (_currentUser is not null)
+    {
+        <p class="text-secondary">Signed in as @_currentUser.Name (@_currentUser.Email).</p>
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <div class="alert @(_isError ? "alert-danger" : "alert-success")" role="@( _isError ? "alert" : "status")">@_message</div>
+        }
+        @if (_currentUser.Role == UserRole.Tenant)
+        {
+            <button class="btn btn-primary sign-in-button" @onclick="LinkExistingTenantAsync" disabled="@_isSubmitting">
+                @(_isSubmitting ? "Joining unit..." : "Join this unit")
+            </button>
+        }
+        else
+        {
+            <div class="alert alert-danger" role="alert">This invitation is for a tenant account. Sign out to create a tenant account or sign in with an existing one.</div>
+            <button class="btn btn-primary sign-in-button" @onclick="SwitchAccountAsync" disabled="@_isSubmitting">Sign out and continue</button>
+        }
+        @if (_currentUser.Role == UserRole.Tenant)
+        {
+            <a class="register-prompt" href="/login">Return to sign in</a>
+        }
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <div class="alert @(_isError ? "alert-danger" : "alert-success")" role="@( _isError ? "alert" : "status")">@_message</div>
+        }
+        <EditForm Model="_form" OnValidSubmit="RegisterAsync">
+            <DataAnnotationsValidator />
+            <div class="form-field">
+                <label class="form-label" for="full-name">Full name</label>
+                <InputText id="full-name" class="input" autocomplete="name" @bind-Value="_form.Name" disabled="@_isSubmitting" />
+                <ValidationMessage For="@(() => _form.Name)" />
+            </div>
+            <div class="form-field">
+                <label class="form-label" for="email">Email address</label>
+                <InputText id="email" class="input" type="email" autocomplete="email" @bind-Value="_form.Email" disabled="@_isSubmitting" />
+                <ValidationMessage For="@(() => _form.Email)" />
+            </div>
+            <div class="form-field">
+                <label class="form-label" for="password">Password</label>
+                <InputText id="password" class="input" type="password" autocomplete="new-password" @bind-Value="_form.Password" disabled="@_isSubmitting" />
+                <ValidationMessage For="@(() => _form.Password)" />
+            </div>
+            <button class="btn btn-primary sign-in-button" type="submit" disabled="@_isSubmitting">
+                @(_isSubmitting ? "Creating tenant account..." : "Create tenant account")
+            </button>
+        </EditForm>
+        <p class="register-prompt">Already registered? <a href="/login">Sign in</a> first, then return to this invite.</p>
+    }
 </AuthPage>
+
+@code {
+    [SupplyParameterFromQuery(Name = "token")]
+    public string? Token { get; set; }
+
+    private readonly TenantRegistrationForm _form = new();
+    private UnitInvitePreview _preview = new();
+    private AuthUser? _currentUser;
+    private string? _message;
+    private bool _isLoading = true;
+    private bool _isSubmitting;
+    private bool _isError;
+    private string? _loadedToken;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.Equals(_loadedToken, Token, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _loadedToken = Token;
+        _isLoading = true;
+        _message = null;
+        try
+        {
+            _preview = await RegistrationService.GetUnitInvitePreviewAsync(Token ?? string.Empty);
+            _currentUser = await AuthService.GetCurrentUserAsync();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load a unit registration invitation.");
+            _preview = new UnitInvitePreview { Status = "unavailable" };
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task RegisterAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Token))
+        {
+            _preview.Status = "invalid";
+            return;
+        }
+
+        _isSubmitting = true;
+        _isError = false;
+        _message = null;
+        try
+        {
+            var user = await AuthService.RegisterAsync(
+                _form.Email.Trim(),
+                _form.Password,
+                new Dictionary<string, object>
+                {
+                    ["full_name"] = _form.Name.Trim(),
+                    ["unit_invite_token"] = Token.Trim()
+                });
+            if (user is null)
+            {
+                _message = "Your tenant account is ready and this unit invitation has been applied. Check your email to confirm your address before signing in.";
+                return;
+            }
+
+            if (user.Role != UserRole.Tenant)
+            {
+                throw new InvalidOperationException("This invitation did not create a tenant account. Contact your landlord.");
+            }
+
+            await AuthenticationStateProvider.LoginAsync(user);
+            Navigation.NavigateTo("/tenant", replace: true);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Tenant registration failed.");
+            await RefreshInviteAfterFailureAsync(exception);
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task LinkExistingTenantAsync()
+    {
+        _isSubmitting = true;
+        _isError = false;
+        _message = null;
+        try
+        {
+            await RegistrationService.RedeemTenantUnitInviteAsync(_currentUser!, Token!);
+            await AuthenticationStateProvider.LoginAsync(_currentUser!);
+            Navigation.NavigateTo("/tenant", replace: true);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Existing tenant failed to redeem a unit invitation.");
+            await RefreshInviteAfterFailureAsync(exception);
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task SwitchAccountAsync()
+    {
+        await AuthService.LogoutAsync();
+        await AuthenticationStateProvider.LogoutAsync();
+        _currentUser = null;
+        _message = null;
+        _isError = false;
+    }
+
+    private async Task RefreshInviteAfterFailureAsync(Exception exception)
+    {
+        try
+        {
+            _preview = await RegistrationService.GetUnitInvitePreviewAsync(Token ?? string.Empty);
+            if (_preview.Status != "valid")
+            {
+                _isError = true;
+                _message = GetInviteMessage(_preview.Status);
+                return;
+            }
+        }
+        catch (Exception refreshException)
+        {
+            Logger.LogError(refreshException, "Failed to recheck a unit invitation after registration failed.");
+        }
+
+        _isError = true;
+        _message = exception.Message.Contains("already", StringComparison.OrdinalIgnoreCase)
+            ? "This invitation has already been used."
+            : "We couldn't complete registration. Check your details and connection, then try again.";
+    }
+
+    private static string GetInviteMessage(string status) => status switch
+    {
+        "expired" => "This unit invitation has expired. Ask your landlord to send a new invite.",
+        "used" => "This unit invitation has already been used. Ask your landlord for a new invite if you still need access.",
+        "invalid" => "This unit invitation link is invalid or missing. Open the full invite link sent by your landlord.",
+        _ => "We couldn't check this invitation. Check your connection and try again."
+    };
+
+    private sealed class TenantRegistrationForm
+    {
+        [Required(ErrorMessage = "Enter your full name.")]
+        [StringLength(120, MinimumLength = 1, ErrorMessage = "Your name must be 1 to 120 characters.")]
+        public string Name { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Enter your email address.")]
+        [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Create a password.")]
+        [MinLength(8, ErrorMessage = "Your password must be at least 8 characters.")]
+        public string Password { get; set; } = string.Empty;
+    }
+}

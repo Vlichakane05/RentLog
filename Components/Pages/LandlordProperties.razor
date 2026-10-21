@@ -1,22 +1,79 @@
 @page "/landlord/properties"
+@using System.Text
+@using QRCoder
 @layout LandlordLayout
 @inject IAuthService AuthService
 @inject IPropertyService PropertyService
+@inject ILandlordContractorManagementService ContractorManagement
+@inject IJSRuntime JavaScript
 @inject ILogger<LandlordProperties> Logger
 @inject NavigationManager Navigation
 
-<PageTitle>Properties and units | Rent Log</PageTitle>
+<PageTitle>Buildings and units | Rent Log</PageTitle>
 
-<div class="landlord-page">
+<div class="landlord-page property-management">
     <header class="page-heading">
         <p class="eyebrow">YOUR PORTFOLIO</p>
-        <h1>Properties and units</h1>
-        <p class="text-secondary">Occupancy, tenants and monthly rent at a glance.</p>
+        <h1>Buildings and units</h1>
+        <p class="text-secondary">Manage your buildings, units and tenant invitations.</p>
     </header>
+
+    @if (!string.IsNullOrWhiteSpace(_message))
+    {
+        <div class="alert @(_isError ? "alert-danger" : "alert-success")" role="@(_isError ? "alert" : "status")">@_message</div>
+    }
+
+    <section class="card management-form" aria-labelledby="create-building-title">
+        <h2 id="create-building-title">Add a building</h2>
+        <EditForm Model="_buildingForm" OnValidSubmit="CreateBuildingAsync">
+            <DataAnnotationsValidator />
+            <div class="form-field">
+                <label class="form-label" for="building-name">Building name</label>
+                <InputText id="building-name" class="input" @bind-Value="_buildingForm.Name" disabled="@_isSaving" />
+                <ValidationMessage For="@(() => _buildingForm.Name)" />
+            </div>
+            <div class="form-field">
+                <label class="form-label" for="building-address">Street address</label>
+                <InputText id="building-address" class="input" @bind-Value="_buildingForm.Address" disabled="@_isSaving" />
+                <ValidationMessage For="@(() => _buildingForm.Address)" />
+            </div>
+            <button class="btn btn-primary" type="submit" disabled="@_isSaving">Create building</button>
+        </EditForm>
+    </section>
+
+    @if (!_isLoading && _properties.Count > 0)
+    {
+        <section class="card management-form" aria-labelledby="add-unit-title">
+            <h2 id="add-unit-title">Add a unit</h2>
+            <EditForm Model="_unitForm" OnValidSubmit="CreateUnitAsync">
+                <DataAnnotationsValidator />
+                <div class="form-field">
+                    <label class="form-label" for="unit-building">Building</label>
+                    <InputSelect id="unit-building" class="input" @bind-Value="_unitForm.PropertyId" disabled="@_isSaving">
+                        @foreach (var property in _properties)
+                        {
+                            <option value="@property.Id">@property.Name</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="unit-number">Unit number or name</label>
+                    <InputText id="unit-number" class="input" @bind-Value="_unitForm.UnitNumber" disabled="@_isSaving" />
+                    <ValidationMessage For="@(() => _unitForm.UnitNumber)" />
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="unit-rent">Monthly rent (R)</label>
+                    <InputNumber id="unit-rent" class="input" @bind-Value="_unitForm.MonthlyRent" min="0" step="0.01" disabled="@_isSaving" />
+                    <ValidationMessage For="@(() => _unitForm.MonthlyRent)" />
+                </div>
+                <button class="btn btn-primary" type="submit" disabled="@_isSaving">Add unit</button>
+            </EditForm>
+        </section>
+    }
 
     @if (_isLoading)
     {
-        <p role="status" class="text-secondary">Loading properties...</p>
+        <p role="status" class="text-secondary">Loading buildings and units...</p>
         <LoadingSkeleton ShowCard="true" />
     }
     else if (_errorMessage is not null)
@@ -25,12 +82,12 @@
     }
     else if (_properties.Count == 0)
     {
-        <EmptyState Icon="⌂" Title="No properties yet" Message="Your managed rental properties will appear here." />
+        <EmptyState Icon="⌂" Title="No buildings yet" Message="Create a building above, then add units and tenant invitations." />
     }
     else
     {
         <section class="portfolio-summary card">
-            <div><span>Total properties</span><strong>@_properties.Count</strong></div>
+            <div><span>Total buildings</span><strong>@_properties.Count</strong></div>
             <div><span>Occupied units</span><strong>@_occupiedUnits of @_totalUnits</strong></div>
             <div><span>Monthly rent potential</span><strong>@FormatCurrency(_monthlyPotential)</strong></div>
         </section>
@@ -41,16 +98,20 @@
                 <section class="property-card card" @key="property.Id">
                     <div class="property-heading">
                         <div>
-                            <p class="eyebrow">PROPERTY</p>
+                            <p class="eyebrow">BUILDING</p>
                             <h2>@property.Name</h2>
                             <p class="text-secondary">@property.Address</p>
                         </div>
                         <span class="occupancy-pill">@occupied / @property.Units.Count occupied</span>
                     </div>
+                    @if (property.Units.Count == 0)
+                    {
+                        <p class="text-secondary">No units yet. Use Add a unit above to start.</p>
+                    }
                     <div class="unit-list">
                         @foreach (var unit in property.Units.OrderBy(item => item.UnitNumber, StringComparer.OrdinalIgnoreCase))
                         {
-                            <article class="unit-row" @key="unit.Id">
+                            <article class="unit-row tenant-invite-unit" @key="unit.Id">
                                 <div class="unit-id">
                                     <span class="unit-icon" aria-hidden="true">⌂</span>
                                     <div><strong>Unit @unit.UnitNumber</strong><span>@(unit.IsOccupied ? unit.TenantName : "No tenant assigned")</span></div>
@@ -64,6 +125,49 @@
                                 {
                                     <span class="badge badge-warning"><span aria-hidden="true">○</span> Vacant</span>
                                 }
+                                @if (unit.Tenants.Count > 0)
+                                {
+                                    <div class="unit-active-tenants">
+                                        <span class="form-label">Current tenants</span>
+                                        @foreach (var tenant in unit.Tenants)
+                                        {
+                                            <div class="unit-active-tenant" @key="tenant.Id">
+                                                <span>@tenant.Name</span>
+                                                <button type="button"
+                                                        class="btn btn-secondary"
+                                                        @onclick="() => EndTenantTenancyAsync(unit, tenant)"
+                                                        disabled="@_isSaving">
+                                                    Mark moved out
+                                                </button>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                <div class="unit-invite-actions">
+                                    <label class="form-label" for="invite-count-@unit.Id">Invites to create</label>
+                                    <InputNumber id="@($"invite-count-{unit.Id}")" class="input invite-count" @bind-Value="_inviteCount" min="1" max="10" />
+                                    <button type="button" class="btn btn-secondary" @onclick="() => CreateUnitInvitesAsync(unit.Id)" disabled="@_isSaving">
+                                        Generate tenant invite@(_inviteCount == 1 ? "" : "s")
+                                    </button>
+                                    <p class="text-secondary">Mark a tenant moved out before inviting a replacement. Multiple tenants can join the same unit.</p>
+                                </div>
+                                @if (_unitInvites.TryGetValue(unit.Id, out var invites) && invites.Count > 0)
+                                {
+                                    <div class="unit-invite-list" aria-label="Active tenant invitations for unit @unit.UnitNumber">
+                                        @foreach (var invite in invites)
+                                        {
+                                            <div class="unit-invite-card" @key="invite.Token">
+                                                <img src="@invite.QrDataUrl" alt="QR code for the tenant invitation for unit @unit.UnitNumber" width="152" height="152" />
+                                                <div class="invite-link-details">
+                                                    <label class="form-label" for="invite-link-@invite.Token">Tenant invitation link</label>
+                                                    <input id="invite-link-@invite.Token" class="input" value="@invite.Url" readonly />
+                                                    <button type="button" class="btn btn-secondary" @onclick="() => CopyInviteLinkAsync(invite.Url)">Copy link</button>
+                                                    <small class="text-secondary">Expires @invite.ExpiresAt.ToLocalTime().ToString("g")</small>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
                             </article>
                         }
                     </div>
@@ -75,9 +179,17 @@
 
 @code {
     private static readonly CultureInfo _moneyCulture = CultureInfo.GetCultureInfo("en-US");
+    private readonly BuildingForm _buildingForm = new();
+    private readonly UnitForm _unitForm = new();
     private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _isError;
+    private string? _message;
     private string? _errorMessage;
+    private AuthUser? _landlord;
     private List<RentalProperty> _properties = [];
+    private readonly Dictionary<string, List<TenantInviteView>> _unitInvites = [];
+    private int _inviteCount = 1;
     private int _totalUnits => _properties.SelectMany(property => property.Units).Count();
     private int _occupiedUnits => _properties.SelectMany(property => property.Units).Count(unit => unit.IsOccupied);
     private decimal _monthlyPotential => _properties.SelectMany(property => property.Units).Sum(unit => unit.MonthlyRent);
@@ -86,19 +198,19 @@
     {
         try
         {
-            var landlord = await AuthService.GetCurrentUserAsync();
-            if (landlord is null || landlord.Role != UserRole.Landlord)
+            _landlord = await AuthService.GetCurrentUserAsync();
+            if (_landlord is null || _landlord.Role != UserRole.Landlord)
             {
                 Navigation.NavigateTo("/login", replace: true);
                 return;
             }
 
-            _properties = (await PropertyService.GetPropertiesAsync(landlord.Id)).ToList();
+            await LoadPropertiesAsync();
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "Failed to load properties.");
-            _errorMessage = "We couldn't load your properties. Please try again.";
+            Logger.LogError(exception, "Failed to load landlord buildings and units.");
+            _errorMessage = "We couldn't load your buildings and units. Please try again.";
         }
         finally
         {
@@ -106,5 +218,180 @@
         }
     }
 
+    private async Task LoadPropertiesAsync()
+    {
+        _properties = (await PropertyService.GetPropertiesAsync(_landlord!.Id)).ToList();
+        foreach (var unit in _properties.SelectMany(property => property.Units))
+        {
+            var invites = await ContractorManagement.GetUnitInvitesAsync(_landlord, unit.Id);
+            _unitInvites[unit.Id] = invites.Select(MapInvite).ToList();
+        }
+
+        if (string.IsNullOrEmpty(_unitForm.PropertyId))
+        {
+            _unitForm.PropertyId = _properties.FirstOrDefault()?.Id ?? string.Empty;
+        }
+    }
+
+    private async Task CreateBuildingAsync()
+    {
+        await SaveAsync(async () =>
+        {
+            var property = await PropertyService.CreatePropertyAsync(
+                _landlord!.Id, _buildingForm.Name, _buildingForm.Address);
+            _properties.Add(property);
+            _unitForm.PropertyId = property.Id;
+            _buildingForm.Name = string.Empty;
+            _buildingForm.Address = string.Empty;
+            _message = "Building created.";
+        });
+    }
+
+    private async Task CreateUnitAsync()
+    {
+        await SaveAsync(async () =>
+        {
+            var unit = await PropertyService.CreateUnitAsync(
+                _landlord!.Id, _unitForm.PropertyId, _unitForm.UnitNumber, _unitForm.MonthlyRent);
+            var property = _properties.FirstOrDefault(item => item.Id == _unitForm.PropertyId)
+                ?? throw new InvalidOperationException("The selected building could not be found.");
+            property.Units.Add(unit);
+            _unitInvites[unit.Id] = [];
+            _unitForm.UnitNumber = string.Empty;
+            _unitForm.MonthlyRent = 0;
+            _message = $"Unit {unit.UnitNumber} added.";
+        });
+    }
+
+    private async Task CreateUnitInvitesAsync(string unitId)
+    {
+        if (_inviteCount is < 1 or > 10)
+        {
+            _isError = true;
+            _message = "Choose between 1 and 10 invites at a time.";
+            return;
+        }
+
+        await SaveAsync(async () =>
+        {
+            if (!_unitInvites.TryGetValue(unitId, out var unitInvites))
+            {
+                unitInvites = [];
+                _unitInvites[unitId] = unitInvites;
+            }
+
+            for (var index = 0; index < _inviteCount; index++)
+            {
+                var invite = await ContractorManagement.CreateUnitInviteAsync(_landlord!, unitId);
+                var url = Navigation.ToAbsoluteUri($"/register?token={Uri.EscapeDataString(invite.Token)}").ToString();
+                unitInvites.Add(new TenantInviteView(invite.Token, url, CreateQrDataUrl(url), invite.ExpiresAt));
+            }
+
+            _message = _inviteCount == 1
+                ? "Tenant invite created."
+                : $"{_inviteCount} tenant invites created.";
+        });
+    }
+
+    private async Task EndTenantTenancyAsync(RentalUnit unit, RentalTenant tenant)
+    {
+        var confirmed = await JavaScript.InvokeAsync<bool>(
+            "confirm",
+            $"Mark {tenant.Name} as moved out of unit {unit.UnitNumber}? Their active tenancy will end.");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        await SaveAsync(async () =>
+        {
+            await PropertyService.EndTenantTenancyAsync(_landlord!.Id, unit.Id, tenant.Id);
+            unit.Tenants.Remove(tenant);
+            unit.TenantName = string.Join(", ", unit.Tenants.Select(item => item.Name));
+            unit.TenantId = unit.Tenants.FirstOrDefault()?.Id ?? string.Empty;
+            unit.IsOccupied = unit.Tenants.Count > 0;
+            _message = $"{tenant.Name}'s tenancy ended. Generate a new invite for the next tenant.";
+        });
+    }
+
+    private async Task CopyInviteLinkAsync(string url)
+    {
+        try
+        {
+            await JavaScript.InvokeVoidAsync("navigator.clipboard.writeText", url);
+            _isError = false;
+            _message = "Invite link copied.";
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Could not copy a tenant invite link.");
+            _isError = true;
+            _message = "We couldn't copy the invite link. Select and copy it from the text field.";
+        }
+    }
+
+    private async Task SaveAsync(Func<Task> action)
+    {
+        _isSaving = true;
+        _isError = false;
+        _message = null;
+        try
+        {
+            await action();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Landlord building, unit, or invite action failed.");
+            _isError = true;
+            _message = exception is InvalidOperationException or ArgumentException
+                ? exception.Message
+                : "We couldn't save this change. Check your connection and try again.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private TenantInviteView MapInvite(RegistrationInviteLink invite)
+    {
+        var url = Navigation.ToAbsoluteUri($"/register?token={Uri.EscapeDataString(invite.Token)}").ToString();
+        return new TenantInviteView(invite.Token, url, CreateQrDataUrl(url), invite.ExpiresAt);
+    }
+
+    private static string CreateQrDataUrl(string value)
+    {
+        using var generator = new QRCodeGenerator();
+        using var data = generator.CreateQrCode(value, QRCodeGenerator.ECCLevel.Q);
+        var svg = new SvgQRCode(data).GetGraphic(5);
+        return $"data:image/svg+xml;base64,{Convert.ToBase64String(Encoding.UTF8.GetBytes(svg))}";
+    }
+
     private static string FormatCurrency(decimal amount) => $"R {amount.ToString("N2", _moneyCulture)}";
+
+    private sealed record TenantInviteView(string Token, string Url, string QrDataUrl, DateTime ExpiresAt);
+
+    private sealed class BuildingForm
+    {
+        [Required(ErrorMessage = "Enter a building name.")]
+        [StringLength(120, MinimumLength = 1)]
+        public string Name { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Enter the street address.")]
+        [StringLength(240, MinimumLength = 1)]
+        public string Address { get; set; } = string.Empty;
+    }
+
+    private sealed class UnitForm
+    {
+        [Required(ErrorMessage = "Select a building.")]
+        public string PropertyId { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Enter a unit number or name.")]
+        [StringLength(40, MinimumLength = 1)]
+        public string UnitNumber { get; set; } = string.Empty;
+
+        [Range(typeof(decimal), "0", "999999999.99", ErrorMessage = "Monthly rent must be zero or higher.")]
+        public decimal MonthlyRent { get; set; }
+    }
 }

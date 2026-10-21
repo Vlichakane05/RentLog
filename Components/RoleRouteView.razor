@@ -39,7 +39,11 @@ else
                 : path.Equals("landlord", StringComparison.OrdinalIgnoreCase)
                     || path.StartsWith("landlord/", StringComparison.OrdinalIgnoreCase)
                         ? nameof(UserRole.Landlord)
-                        : null;
+                        : path.Equals("contractor", StringComparison.OrdinalIgnoreCase)
+                            || (path.StartsWith("contractor/", StringComparison.OrdinalIgnoreCase)
+                                && !path.Equals("contractor/join", StringComparison.OrdinalIgnoreCase))
+                                ? nameof(UserRole.Contractor)
+                                : null;
 
         _isCheckingAccess = _requiredRole is not null;
         _user = _requiredRole is null

@@ -150,7 +150,108 @@
     font-weight: var(--font-weight-normal);
 }
 
+.property-management {
+    padding: var(--space-5);
+}
+
+.management-form {
+    margin-bottom: var(--space-5);
+}
+
+.management-form h2 {
+    margin-top: 0;
+}
+
+.management-form .btn {
+    min-height: var(--touch-target);
+}
+
+.tenant-invite-unit {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.unit-invite-actions,
+.unit-invite-list,
+.unit-active-tenants {
+    grid-column: 1 / -1;
+}
+
+.unit-active-tenants {
+    display: grid;
+    gap: var(--space-2);
+}
+
+.unit-active-tenant {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+}
+
+.unit-invite-actions {
+    display: grid;
+    grid-template-columns: minmax(5rem, 7rem) minmax(0, 1fr);
+    align-items: end;
+    gap: var(--space-2);
+}
+
+.unit-invite-actions .form-label,
+.unit-invite-actions p {
+    grid-column: 1 / -1;
+    margin: 0;
+}
+
+.unit-invite-actions .btn {
+    min-height: var(--touch-target);
+}
+
+.invite-count {
+    max-width: 7rem;
+}
+
+.unit-invite-list {
+    display: grid;
+    gap: var(--space-3);
+}
+
+.unit-invite-card {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    min-width: 0;
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-alt);
+}
+
+.unit-invite-card img {
+    flex: 0 0 9.5rem;
+    max-width: 9.5rem;
+    height: auto;
+    padding: var(--space-2);
+    border-radius: var(--radius-sm);
+    background: #fff;
+}
+
+.invite-link-details {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+    gap: var(--space-2);
+}
+
+.invite-link-details .input {
+    width: 100%;
+    min-width: 0;
+}
+
 @media (max-width: 42rem) {
+    .property-management {
+        padding: var(--space-3);
+    }
+
     .portfolio-summary {
         grid-template-columns: minmax(0, 1fr);
         gap: var(--space-3);
@@ -169,6 +270,10 @@
         gap: var(--space-2);
     }
 
+    .tenant-invite-unit {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
     .unit-id {
         grid-column: 1;
     }
@@ -181,5 +286,14 @@
     .unit-row .badge {
         grid-column: 1 / -1;
         justify-self: start;
+    }
+
+    .unit-invite-card {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .unit-invite-card img {
+        align-self: flex-start;
     }
 }

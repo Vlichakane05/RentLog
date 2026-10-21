@@ -1,0 +1,348 @@
+@page "/contractor/join"
+@attribute [AllowAnonymous]
+@inject IAuthService AuthService
+@inject IRegistrationService RegistrationService
+@inject IContractorService ContractorService
+@inject RentLogAuthStateProvider AuthenticationStateProvider
+@inject ILogger<ContractorJoin> Logger
+@inject NavigationManager Navigation
+
+<PageTitle>Contractor invitation | Rent Log</PageTitle>
+
+<AuthPage TitleId="contractor-join-title">
+    <a class="brand" href="/" aria-label="Rent Log home">
+        <span class="brand-mark" aria-hidden="true">R</span>
+        <span>Rent Log</span>
+    </a>
+    <div class="login-heading">
+        <h1 id="contractor-join-title">Join a landlord's contractor team</h1>
+        @if (_preview.Status == "valid")
+        {
+            <p class="text-secondary"><strong>@_preview.LandlordName</strong> invited you to work with them.</p>
+        }
+        else
+        {
+            <p class="text-secondary">Use the contractor invitation sent by your landlord.</p>
+        }
+    </div>
+
+    @if (_isLoading)
+    {
+        <p role="status" class="route-status">Checking your invitation...</p>
+    }
+    else if (_preview.Status != "valid")
+    {
+        <div class="alert alert-danger" role="alert">@GetInviteMessage(_preview.Status)</div>
+        <a class="btn btn-primary sign-in-button" href="/login">Back to sign in</a>
+    }
+    else if (_currentUser is not null)
+    {
+        <p class="text-secondary">Signed in as @_currentUser.Name (@_currentUser.Email).</p>
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <div class="alert @(_isError ? "alert-danger" : "alert-success")" role="@(_isError ? "alert" : "status")">@_message</div>
+        }
+        @if (_currentUser.Role == UserRole.Contractor)
+        {
+            <button class="btn btn-primary sign-in-button" @onclick="LinkExistingContractorAsync" disabled="@_isSubmitting">
+                @(_isSubmitting ? "Accepting invitation..." : "Join @_preview.LandlordName")
+            </button>
+        }
+        else
+        {
+            <div class="alert alert-danger" role="alert">This is not a contractor account. Sign out to create a contractor account or sign in with an existing one.</div>
+            <button class="btn btn-primary sign-in-button" @onclick="SwitchAccountAsync" disabled="@_isSubmitting">Sign out and continue</button>
+        }
+        @if (_currentUser.Role == UserRole.Contractor)
+        {
+            <a class="register-prompt" href="/login">Return to sign in</a>
+        }
+    }
+    else
+    {
+        <div class="registration-tabs" role="tablist" aria-label="Contractor account options">
+            <button type="button" class="@(_createAccount ? "active" : "")" role="tab" aria-selected="@_createAccount" @onclick="() => SetMode(true)">Create account</button>
+            <button type="button" class="@(!_createAccount ? "active" : "")" role="tab" aria-selected="@(!_createAccount)" @onclick="() => SetMode(false)">Existing account</button>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <div class="alert @(_isError ? "alert-danger" : "alert-success")" role="@(_isError ? "alert" : "status")">@_message</div>
+        }
+
+        @if (_createAccount)
+        {
+            <EditForm Model="_registerForm" OnValidSubmit="CreateAccountAsync">
+                <DataAnnotationsValidator />
+                <div class="form-field">
+                    <label class="form-label" for="contractor-name">Full name</label>
+                    <InputText id="contractor-name" class="input" autocomplete="name" @bind-Value="_registerForm.Name" disabled="@_isSubmitting" />
+                    <ValidationMessage For="@(() => _registerForm.Name)" />
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="contractor-email">Email address</label>
+                    <InputText id="contractor-email" class="input" type="email" autocomplete="email" @bind-Value="_registerForm.Email" disabled="@_isSubmitting" />
+                    <ValidationMessage For="@(() => _registerForm.Email)" />
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="contractor-password">Password</label>
+                    <InputText id="contractor-password" class="input" type="password" autocomplete="new-password" @bind-Value="_registerForm.Password" disabled="@_isSubmitting" />
+                    <ValidationMessage For="@(() => _registerForm.Password)" />
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="contractor-trades">Trades</label>
+                    <InputText id="contractor-trades" class="input" @bind-Value="_registerForm.Trades" placeholder="Plumbing, Electrical" disabled="@_isSubmitting" />
+                    <small class="text-secondary">Separate each trade with a comma.</small>
+                    <ValidationMessage For="@(() => _registerForm.Trades)" />
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="service-area">Service area</label>
+                    <InputText id="service-area" class="input" @bind-Value="_registerForm.ServiceArea" maxlength="200" disabled="@_isSubmitting" />
+                    <ValidationMessage For="@(() => _registerForm.ServiceArea)" />
+                </div>
+                <button class="btn btn-primary sign-in-button" type="submit" disabled="@_isSubmitting">
+                    @(_isSubmitting ? "Creating account..." : "Create contractor account")
+                </button>
+            </EditForm>
+        }
+        else
+        {
+            <EditForm Model="_loginForm" OnValidSubmit="SignInAndJoinAsync">
+                <DataAnnotationsValidator />
+                <div class="form-field">
+                    <label class="form-label" for="existing-email">Email address</label>
+                    <InputText id="existing-email" class="input" type="email" autocomplete="username" @bind-Value="_loginForm.Email" disabled="@_isSubmitting" />
+                    <ValidationMessage For="@(() => _loginForm.Email)" />
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="existing-password">Password</label>
+                    <InputText id="existing-password" class="input" type="password" autocomplete="current-password" @bind-Value="_loginForm.Password" disabled="@_isSubmitting" />
+                    <ValidationMessage For="@(() => _loginForm.Password)" />
+                </div>
+                <button class="btn btn-primary sign-in-button" type="submit" disabled="@_isSubmitting">
+                    @(_isSubmitting ? "Signing in..." : "Sign in and join")
+                </button>
+            </EditForm>
+        }
+    }
+</AuthPage>
+
+@code {
+    [SupplyParameterFromQuery(Name = "token")]
+    public string? Token { get; set; }
+
+    private readonly ContractorRegistrationForm _registerForm = new();
+    private readonly ContractorLoginForm _loginForm = new();
+    private ContractorInvitePreview _preview = new();
+    private AuthUser? _currentUser;
+    private string? _message;
+    private string? _loadedToken;
+    private bool _createAccount = true;
+    private bool _isLoading = true;
+    private bool _isSubmitting;
+    private bool _isError;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.Equals(_loadedToken, Token, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _loadedToken = Token;
+        _isLoading = true;
+        _message = null;
+        try
+        {
+            _preview = await RegistrationService.GetContractorInvitePreviewAsync(Token ?? string.Empty);
+            _currentUser = await AuthService.GetCurrentUserAsync();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load a contractor invitation.");
+            _preview = new ContractorInvitePreview { Status = "unavailable" };
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void SetMode(bool createAccount)
+    {
+        _createAccount = createAccount;
+        _message = null;
+    }
+
+    private async Task SwitchAccountAsync()
+    {
+        await AuthService.LogoutAsync();
+        await AuthenticationStateProvider.LogoutAsync();
+        _currentUser = null;
+        _message = null;
+        _isError = false;
+    }
+
+    private async Task CreateAccountAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Token))
+        {
+            _preview.Status = "invalid";
+            return;
+        }
+
+        var trades = _registerForm.Trades
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (trades.Length == 0 || trades.Any(trade => trade.Length > 80))
+        {
+            _isError = true;
+            _message = "Enter at least one trade. Each trade must be 80 characters or fewer.";
+            return;
+        }
+
+        await SubmitAsync(async () =>
+        {
+            var user = await AuthService.RegisterAsync(
+                _registerForm.Email.Trim(),
+                _registerForm.Password,
+                new Dictionary<string, object>
+                {
+                    ["full_name"] = _registerForm.Name.Trim(),
+                    ["contractor_invite_token"] = Token.Trim(),
+                    ["contractor_trades"] = trades,
+                    ["service_area"] = _registerForm.ServiceArea.Trim()
+                });
+            if (user is null)
+            {
+                _message = "Your contractor account has been created and linked to this invitation. Check your email to confirm your address before signing in.";
+                return;
+            }
+
+            if (user.Role != UserRole.Contractor)
+            {
+                throw new InvalidOperationException("The invitation did not create a contractor account. Contact the inviting landlord.");
+            }
+
+            await CompleteSignInAsync(user);
+        });
+    }
+
+    private async Task SignInAndJoinAsync()
+    {
+        await SubmitAsync(async () =>
+        {
+            var user = await AuthService.LoginAsync(_loginForm.Email.Trim(), _loginForm.Password);
+            if (user is null)
+            {
+                throw new InvalidOperationException("We couldn't sign you in with those details.");
+            }
+
+            if (user.Role != UserRole.Contractor)
+            {
+                await AuthService.LogoutAsync();
+                throw new InvalidOperationException("This invitation is for a contractor account. Sign in with your contractor account or create one.");
+            }
+
+            await ContractorService.LinkContractorInviteAsync(user, Token!);
+            await CompleteSignInAsync(user);
+        });
+    }
+
+    private async Task LinkExistingContractorAsync()
+    {
+        if (_currentUser?.Role != UserRole.Contractor)
+        {
+            return;
+        }
+
+        await SubmitAsync(async () =>
+        {
+            await ContractorService.LinkContractorInviteAsync(_currentUser, Token!);
+            await CompleteSignInAsync(_currentUser);
+        });
+    }
+
+    private async Task SubmitAsync(Func<Task> action)
+    {
+        _isSubmitting = true;
+        _isError = false;
+        _message = null;
+        try
+        {
+            await action();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Contractor invitation registration failed.");
+            try
+            {
+                _preview = await RegistrationService.GetContractorInvitePreviewAsync(Token ?? string.Empty);
+            }
+            catch (Exception previewException)
+            {
+                Logger.LogError(previewException, "Failed to recheck a contractor invitation.");
+            }
+
+            _isError = true;
+            _message = _preview.Status != "valid"
+                ? GetInviteMessage(_preview.Status)
+                : exception.Message.Contains("already", StringComparison.OrdinalIgnoreCase)
+                    ? "This contractor invitation has already been used."
+                    : exception is InvalidOperationException
+                        ? exception.Message
+                        : "We couldn't complete the invitation. Check your details and connection, then try again.";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task CompleteSignInAsync(AuthUser user)
+    {
+        await AuthenticationStateProvider.LoginAsync(user);
+        Navigation.NavigateTo("/contractor", replace: true);
+    }
+
+    private static string GetInviteMessage(string status) => status switch
+    {
+        "expired" => "This contractor invitation has expired. Ask the landlord to send a new invite.",
+        "used" => "This contractor invitation has already been used.",
+        "invalid" => "This contractor invitation link is invalid or missing. Open the full invite link sent by the landlord.",
+        _ => "We couldn't check this invitation. Check your connection and try again."
+    };
+
+    private sealed class ContractorRegistrationForm
+    {
+        [Required(ErrorMessage = "Enter your full name.")]
+        [StringLength(120, MinimumLength = 1, ErrorMessage = "Your name must be 1 to 120 characters.")]
+        public string Name { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Enter your email address.")]
+        [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Create a password.")]
+        [MinLength(8, ErrorMessage = "Your password must be at least 8 characters.")]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Enter at least one trade.")]
+        public string Trades { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Enter your service area.")]
+        [StringLength(200, MinimumLength = 1, ErrorMessage = "Your service area must be 1 to 200 characters.")]
+        public string ServiceArea { get; set; } = string.Empty;
+    }
+
+    private sealed class ContractorLoginForm
+    {
+        [Required(ErrorMessage = "Enter your email address.")]
+        [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Enter your password.")]
+        public string Password { get; set; } = string.Empty;
+    }
+}

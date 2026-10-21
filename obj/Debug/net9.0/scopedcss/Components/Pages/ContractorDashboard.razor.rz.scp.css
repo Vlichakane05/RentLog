@@ -1,0 +1,351 @@
+.contractor-dashboard[b-4osgj0f93p] {
+    width: min(100%, 76rem);
+    margin: 0 auto;
+    padding: var(--space-5);
+}
+
+.contractor-dashboard .dashboard-heading[b-4osgj0f93p],
+.section-heading[b-4osgj0f93p] {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    margin-bottom: var(--space-5);
+}
+
+.contractor-dashboard .dashboard-heading h1[b-4osgj0f93p] {
+    margin-bottom: var(--space-2);
+}
+
+.contractor-job-section[b-4osgj0f93p] {
+    margin-bottom: var(--space-5);
+}
+
+.section-heading h2[b-4osgj0f93p] {
+    margin-bottom: var(--space-1);
+}
+
+.section-heading p[b-4osgj0f93p] {
+    margin-bottom: 0;
+}
+
+.landlord-filter[b-4osgj0f93p] {
+    flex: 1 1 15rem;
+    max-width: 22rem;
+    margin-bottom: 0;
+}
+
+.landlord-filter .input[b-4osgj0f93p] {
+    width: 100%;
+}
+
+.contractor-job-list[b-4osgj0f93p] {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr));
+    gap: var(--space-4);
+}
+
+.contractor-job-card[b-4osgj0f93p] {
+    display: grid;
+    align-content: start;
+    gap: var(--space-3);
+    min-width: 0;
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.contractor-job-card > p[b-4osgj0f93p] {
+    margin: 0;
+}
+
+.emergency-job[b-4osgj0f93p] {
+    border: 2px solid var(--color-danger);
+    border-left-width: 0.5rem;
+    background: var(--color-danger-bg);
+}
+
+.contractor-job-heading[b-4osgj0f93p],
+.contractor-job-actions[b-4osgj0f93p] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+}
+
+.contractor-job-heading h3[b-4osgj0f93p] {
+    margin: var(--space-2) 0 0;
+    overflow-wrap: anywhere;
+}
+
+.contractor-job-actions[b-4osgj0f93p] {
+    justify-content: flex-start;
+}
+
+.job-label[b-4osgj0f93p] {
+    color: var(--color-text);
+    font-weight: var(--font-weight-semibold);
+}
+
+.job-meta[b-4osgj0f93p] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    color: var(--color-text-secondary);
+}
+
+.job-meta span[b-4osgj0f93p] {
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-full);
+    background: var(--color-primary-subtle-bg);
+}
+
+.emergency-badge[b-4osgj0f93p] {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-full);
+    background: var(--color-danger);
+    color: var(--color-on-danger, #fff);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+}
+
+.status-badge[b-4osgj0f93p] {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-full);
+    background: var(--color-primary-subtle-bg);
+    color: var(--color-primary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+}
+
+.job-tabs[b-4osgj0f93p] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.job-tab[b-4osgj0f93p] {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--touch-target);
+    padding: var(--space-2) var(--space-3);
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: transparent;
+    color: var(--color-text-secondary);
+    font: inherit;
+    cursor: pointer;
+}
+
+.job-tab.active[b-4osgj0f93p] {
+    border-bottom-color: var(--color-primary);
+    color: var(--color-primary);
+    font-weight: var(--font-weight-semibold);
+}
+
+.job-tab span[b-4osgj0f93p] {
+    display: grid;
+    min-width: 1.5rem;
+    min-height: 1.5rem;
+    place-items: center;
+    border-radius: var(--radius-full);
+    background: var(--color-primary-subtle-bg);
+    font-size: var(--font-size-xs);
+}
+
+.contractor-profile[b-4osgj0f93p] {
+    display: grid;
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+}
+
+.contractor-profile h2[b-4osgj0f93p],
+.contractor-profile p[b-4osgj0f93p] {
+    margin: 0;
+}
+
+.trade-options[b-4osgj0f93p] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: 0;
+    border: 0;
+}
+
+.trade-options legend[b-4osgj0f93p] {
+    margin-bottom: var(--space-2);
+}
+
+.trade-option[b-4osgj0f93p] {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--touch-target);
+    padding: 0 var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+}
+
+.trade-option input[b-4osgj0f93p] {
+    width: 1.1rem;
+    height: 1.1rem;
+    accent-color: var(--color-primary);
+}
+
+.approved-location[b-4osgj0f93p] {
+    color: var(--color-text);
+    font-weight: var(--font-weight-semibold);
+}
+
+.reopen-note[b-4osgj0f93p] {
+    padding: var(--space-3);
+    border-left: 3px solid var(--color-primary);
+    background: var(--color-primary-subtle-bg);
+    color: var(--color-primary-subtle-text);
+}
+
+.contractor-job-detail .back-link[b-4osgj0f93p] {
+    display: inline-block;
+    margin-bottom: var(--space-4);
+}
+
+.job-detail-card[b-4osgj0f93p] {
+    display: grid;
+    gap: var(--space-4);
+}
+
+.job-detail-top[b-4osgj0f93p] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.job-detail-card h1[b-4osgj0f93p] {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.job-detail-meta[b-4osgj0f93p] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: 0;
+    color: var(--color-text-secondary);
+}
+
+.job-detail-description[b-4osgj0f93p] {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.approved-details[b-4osgj0f93p],
+.job-evidence[b-4osgj0f93p],
+.job-update-form[b-4osgj0f93p] {
+    display: grid;
+    gap: var(--space-3);
+}
+
+.approved-details[b-4osgj0f93p] {
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--color-primary-subtle-bg);
+}
+
+.approved-details h2[b-4osgj0f93p],
+.approved-details h3[b-4osgj0f93p],
+.approved-details p[b-4osgj0f93p] {
+    margin: 0;
+}
+
+.approved-details h2[b-4osgj0f93p] {
+    font-size: var(--font-size-lg);
+}
+
+.approved-details h3[b-4osgj0f93p] {
+    font-size: var(--font-size-base);
+}
+
+.preferred-window-list[b-4osgj0f93p] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.preferred-window-list li[b-4osgj0f93p] {
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+}
+
+.job-media-grid[b-4osgj0f93p] {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: var(--space-3);
+}
+
+.job-media-grid figure[b-4osgj0f93p] {
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-background);
+}
+
+.job-media-grid img[b-4osgj0f93p],
+.job-media-grid video[b-4osgj0f93p] {
+    display: block;
+    width: 100%;
+    max-height: 28rem;
+    object-fit: contain;
+    background: #000;
+}
+
+.job-media-grid figcaption[b-4osgj0f93p] {
+    padding: var(--space-2);
+    overflow-wrap: anywhere;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+@media (max-width: 40rem) {
+    .contractor-dashboard[b-4osgj0f93p] {
+        padding: var(--space-3);
+    }
+
+    .contractor-dashboard .card[b-4osgj0f93p] {
+        padding: var(--space-4);
+    }
+
+    .landlord-filter[b-4osgj0f93p] {
+        max-width: none;
+    }
+
+    .contractor-job-actions[b-4osgj0f93p],
+    .contractor-job-actions .btn[b-4osgj0f93p],
+    .job-detail-card > .btn[b-4osgj0f93p] {
+        width: 100%;
+    }
+
+    .job-tab[b-4osgj0f93p] {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+}

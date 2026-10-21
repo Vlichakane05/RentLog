@@ -27,9 +27,21 @@ public sealed class SupabaseIssueService(
         string title,
         string description,
         Severity severity,
+        string category,
+        IReadOnlyList<string> preferredWindows,
         IReadOnlyList<string> mediaUrls)
     {
         EnsureRole(tenant, UserRole.Tenant);
+        if (!IsSupportedWorkCategory(category))
+        {
+            throw new ArgumentException("Choose a valid work category.", nameof(category));
+        }
+        if (preferredWindows is null || preferredWindows.Count == 0 ||
+            preferredWindows.Any(string.IsNullOrWhiteSpace))
+        {
+            throw new ArgumentException("Add at least one complete preferred time window.", nameof(preferredWindows));
+        }
+
         var client = await GetAuthorizedClientAsync(tenant);
         var tenantId = ParseId(tenant.Id, "tenant");
         var storagePaths = mediaUrls
@@ -111,6 +123,8 @@ public sealed class SupabaseIssueService(
             Severity = ToDatabaseValue(severity),
             Status = "open",
             IsDisputed = false,
+            Category = category,
+            PreferredWindows = preferredWindows.ToList(),
             CreatedAt = DateTime.UtcNow
         };
         await client.From<IssueRow>().Insert(issue);
@@ -167,6 +181,41 @@ public sealed class SupabaseIssueService(
         return await LoadIssueAsync(client, row.Id);
     }
 
+    public async Task<Issue?> VerifyContractorWorkAsync(AuthUser tenant, string issueId)
+    {
+        EnsureRole(tenant, UserRole.Tenant);
+        var (client, row) = await GetAuthorizedIssueAsync(tenant, issueId);
+        if (row is null || row.ContractorStatus != "Work done" || row.TenantVerifiedAt is not null)
+        {
+            return null;
+        }
+
+        await client.Rpc("verify_contractor_work", new { p_issue_id = row.Id });
+        return await LoadIssueAsync(client, row.Id);
+    }
+
+    public async Task<Issue?> ReopenContractorWorkAsync(AuthUser tenant, string issueId, string note)
+    {
+        EnsureRole(tenant, UserRole.Tenant);
+        if (string.IsNullOrWhiteSpace(note) || note.Trim().Length > 500)
+        {
+            throw new ArgumentException("Enter a short note of up to 500 characters.", nameof(note));
+        }
+
+        var (client, row) = await GetAuthorizedIssueAsync(tenant, issueId);
+        if (row is null || row.ContractorStatus != "Work done" || row.TenantVerifiedAt is not null)
+        {
+            return null;
+        }
+
+        await client.Rpc("reopen_contractor_work", new
+        {
+            p_issue_id = row.Id,
+            p_note = note.Trim()
+        });
+        return await LoadIssueAsync(client, row.Id);
+    }
+
     public async Task<Issue?> AcknowledgeAsync(AuthUser landlord, string issueId)
     {
         EnsureRole(landlord, UserRole.Landlord);
@@ -187,7 +236,8 @@ public sealed class SupabaseIssueService(
         decimal amount,
         string workDescription,
         string fileName,
-        string fileDataUrl)
+        string contentType,
+        byte[] fileBytes)
     {
         EnsureRole(landlord, UserRole.Landlord);
         var (client, issue) = await GetAuthorizedIssueAsync(landlord, issueId);
@@ -196,8 +246,9 @@ public sealed class SupabaseIssueService(
             return null;
         }
 
-        var (bytes, contentType) = DecodeDataUrl(fileDataUrl);
-        if (bytes.Length == 0 || bytes.Length > 10 * 1024 * 1024)
+        ArgumentNullException.ThrowIfNull(fileBytes);
+        contentType = contentType.ToLowerInvariant();
+        if (fileBytes.Length == 0 || fileBytes.Length > 10 * 1024 * 1024)
         {
             throw new InvalidOperationException("The contractor quote must be larger than 0 bytes and no more than 10 MB.");
         }
@@ -222,7 +273,7 @@ public sealed class SupabaseIssueService(
 
         var storagePath = $"quotes/{issue.Id:D}/{quoteId:N}{extension.ToLowerInvariant()}";
         await client.Storage.From(BucketName).Upload(
-            bytes,
+            fileBytes,
             storagePath,
             new Supabase.Storage.FileOptions { ContentType = contentType, CacheControl = "3600", Upsert = false });
 
@@ -414,6 +465,18 @@ public sealed class SupabaseIssueService(
             quotes.Add(await MapQuoteAsync(client, quote));
         }
 
+        var contractorFirstName = string.Empty;
+        var contractorTrade = string.Empty;
+        if (row.AssignedContractorId is not null &&
+            string.Equals(client.Auth.CurrentUser?.Id, row.TenantId.ToString(), StringComparison.OrdinalIgnoreCase))
+        {
+            var contractorDetails = await client.Rpc<TenantIssueContractorDetailsRow>(
+                "get_tenant_issue_contractor_details",
+                new { p_issue_id = row.Id });
+            contractorFirstName = contractorDetails?.ContractorFirstName ?? string.Empty;
+            contractorTrade = contractorDetails?.ContractorTrade ?? string.Empty;
+        }
+
         return new Issue
         {
             Id = row.Id.ToString(),
@@ -427,6 +490,18 @@ public sealed class SupabaseIssueService(
             IsDisputed = row.IsDisputed,
             Description = row.Description,
             ContractorName = row.ContractorName,
+            ContractorFirstName = contractorFirstName,
+            ContractorTrade = contractorTrade,
+            Category = row.Category,
+            PreferredWindows = row.PreferredWindows,
+            ReleasedToContractors = row.ReleasedToContractors,
+            AssignedContractorId = row.AssignedContractorId?.ToString(),
+            ContractorStatus = SupabaseContractorService.ParseContractorStatus(row.ContractorStatus),
+            AcceptedAt = row.AcceptedAt is null ? null : DateTime.SpecifyKind(row.AcceptedAt.Value, DateTimeKind.Utc),
+            LandlordSeenAt = row.LandlordSeenAt is null ? null : DateTime.SpecifyKind(row.LandlordSeenAt.Value, DateTimeKind.Utc),
+            WorkDoneAt = row.WorkDoneAt is null ? null : DateTime.SpecifyKind(row.WorkDoneAt.Value, DateTimeKind.Utc),
+            TenantVerifiedAt = row.TenantVerifiedAt is null ? null : DateTime.SpecifyKind(row.TenantVerifiedAt.Value, DateTimeKind.Utc),
+            ReopenNote = row.ReopenNote,
             Events = mappedEvents,
             Quotes = quotes
         };
@@ -517,30 +592,6 @@ public sealed class SupabaseIssueService(
             .Update();
     }
 
-    private static (byte[] Bytes, string ContentType) DecodeDataUrl(string dataUrl)
-    {
-        var separator = dataUrl.IndexOf(',');
-        if (!dataUrl.StartsWith("data:", StringComparison.OrdinalIgnoreCase) || separator < 0)
-        {
-            throw new InvalidDataException("The quote attachment is not a valid data URL.");
-        }
-
-        var mimeTypeEnd = dataUrl.IndexOf(';');
-        if (mimeTypeEnd < 5 || mimeTypeEnd > separator)
-        {
-            throw new InvalidDataException("The quote attachment does not include a valid content type.");
-        }
-
-        try
-        {
-            return (Convert.FromBase64String(dataUrl[(separator + 1)..]), dataUrl[5..mimeTypeEnd].ToLowerInvariant());
-        }
-        catch (FormatException exception)
-        {
-            throw new InvalidDataException("The quote attachment could not be decoded.", exception);
-        }
-    }
-
     private static void EnsureRole(AuthUser user, UserRole role)
     {
         ArgumentNullException.ThrowIfNull(user);
@@ -558,6 +609,9 @@ public sealed class SupabaseIssueService(
     private static string ToDatabaseValue(Enum value) =>
         string.Concat(value.ToString().Select((character, index) =>
             char.IsUpper(character) && index > 0 ? $"_{char.ToLowerInvariant(character)}" : char.ToLowerInvariant(character).ToString()));
+
+    private static bool IsSupportedWorkCategory(string? category) => category is
+        "Plumbing" or "Electrical" or "Appliance" or "Locks and Security" or "Pest Control" or "General Maintenance";
 
     private static Status FromDatabaseStatus(string status) => status switch
     {

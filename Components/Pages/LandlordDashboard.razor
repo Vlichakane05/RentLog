@@ -231,12 +231,23 @@ else
             _properties = (await propertiesTask).ToList();
             _jobs = (await jobsTask).ToList();
 
-            var units = _properties.SelectMany(property => property.Units)
+            var units = _properties.SelectMany(property => property.Units.SelectMany(unit =>
+                    unit.Tenants.Select(tenant => new
+                    {
+                        TenantId = tenant.Id,
+                        tenant.Name,
+                        unit.UnitNumber,
+                        PropertyName = property.Name
+                    })))
                 .Where(unit => !string.IsNullOrWhiteSpace(unit.TenantId))
                 .ToDictionary(unit => unit.TenantId);
             _rentRows = rentEntries
                 .Where(entry => units.ContainsKey(entry.TenantId))
-                .Select(entry => new RentLedgerRow(entry, units[entry.TenantId].TenantName, units[entry.TenantId].UnitNumber, FindPropertyName(entry.TenantId)))
+                .Select(entry => new RentLedgerRow(
+                    entry,
+                    units[entry.TenantId].Name,
+                    units[entry.TenantId].UnitNumber,
+                    units[entry.TenantId].PropertyName))
                 .ToList();
         }
         catch (Exception exception)
@@ -285,9 +296,6 @@ else
     }
 
     private static string FormatCurrency(decimal amount) => $"R {amount.ToString("N2", _moneyCulture)}";
-
-    private string FindPropertyName(string tenantId) => _properties
-        .FirstOrDefault(property => property.Units.Any(unit => unit.TenantId == tenantId))?.Name ?? string.Empty;
 
     private sealed record RentLedgerRow(RentEntry Entry, string TenantName, string UnitNumber, string PropertyName);
 }

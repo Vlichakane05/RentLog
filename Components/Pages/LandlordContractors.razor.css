@@ -1,0 +1,95 @@
+.contractor-management {
+    width: min(100%, 76rem);
+    margin: 0 auto;
+    padding: var(--space-5);
+}
+
+.contractor-invite-panel,
+.trusted-contractor-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+}
+
+.contractor-invite-panel {
+    margin-bottom: var(--space-6);
+}
+
+.contractor-invite-panel h2,
+.trusted-contractor-heading h3 {
+    margin-top: 0;
+}
+
+.contractor-invite-panel > div:first-child {
+    flex: 1 1 18rem;
+}
+
+.contractor-invite-link {
+    display: grid;
+    flex: 1 1 100%;
+    gap: var(--space-2);
+}
+
+.contractor-invite-link .input {
+    width: 100%;
+}
+
+.contractor-active-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--touch-target);
+    font-weight: var(--font-weight-semibold);
+}
+
+.contractor-active-toggle input {
+    width: 1.25rem;
+    height: 1.25rem;
+    accent-color: var(--color-primary);
+}
+
+.trusted-contractor-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+    gap: var(--space-4);
+}
+
+.trusted-contractor-card {
+    display: grid;
+    align-content: start;
+    gap: var(--space-3);
+}
+
+.remove-contractor-button {
+    justify-self: start;
+}
+
+.trusted-contractor-heading h3,
+.trusted-contractor-heading p {
+    margin-bottom: var(--space-1);
+}
+
+.contractor-trades {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.contractor-trades li {
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-full);
+    background: var(--color-primary-subtle-bg);
+    color: var(--color-primary-subtle-text);
+    font-size: var(--font-size-sm);
+}
+
+@media (max-width: 42rem) {
+    .contractor-management {
+        padding: var(--space-3);
+    }
+}

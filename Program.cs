@@ -33,11 +33,20 @@ builder.Services.AddSingleton(new BackendMode(useMockServices, setupMessage));
 if (useMockServices)
 {
     builder.Services.AddScoped<IAuthService, MockAuthService>();
-    builder.Services.AddScoped<IIssueService, MockIssueService>();
+    builder.Services.AddScoped<MockIssueService>();
+    builder.Services.AddSingleton<MockLandlordContractorManagementService>();
+    builder.Services.AddScoped<MockContractorService>();
+    builder.Services.AddScoped<IIssueService>(services => services.GetRequiredService<MockIssueService>());
+    builder.Services.AddScoped<ILandlordContractorJobsService>(services => services.GetRequiredService<MockIssueService>());
     builder.Services.AddScoped<IRentService, MockRentService>();
     builder.Services.AddScoped<IPropertyService, MockPropertyService>();
     builder.Services.AddScoped<ITenancyService, MockTenancyService>();
     builder.Services.AddScoped<IMediaService, MockMediaService>();
+    builder.Services.AddScoped<IRegistrationService, MockRegistrationService>();
+    builder.Services.AddScoped<ILandlordContractorManagementService>(
+        services => services.GetRequiredService<MockLandlordContractorManagementService>());
+    builder.Services.AddScoped<IContractorService>(
+        services => services.GetRequiredService<MockContractorService>());
 }
 else
 {
@@ -47,6 +56,14 @@ else
     builder.Services.AddScoped<IRentService, SupabaseRentService>();
     builder.Services.AddScoped<IPropertyService, SupabasePropertyService>();
     builder.Services.AddScoped<ITenancyService, SupabaseTenancyService>();
+    builder.Services.AddScoped<IRegistrationService, SupabaseRegistrationService>();
+    builder.Services.AddScoped<SupabaseContractorService>();
+    builder.Services.AddScoped<IContractorService>(
+        services => services.GetRequiredService<SupabaseContractorService>());
+    builder.Services.AddScoped<ILandlordContractorJobsService>(
+        services => services.GetRequiredService<SupabaseContractorService>());
+    builder.Services.AddScoped<ILandlordContractorManagementService>(
+        services => services.GetRequiredService<IContractorService>());
     builder.Services.AddScoped<SupabaseMediaService>();
     builder.Services.AddScoped<IMediaService>(services => services.GetRequiredService<SupabaseMediaService>());
 }

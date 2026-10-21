@@ -27,6 +27,10 @@ build_property.EnableCodeStyleSeverity =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBcHAucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/Users/User/RentLog/Components/Pages/ContractorJoin.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xDb250cmFjdG9ySm9pbi5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/Users/User/RentLog/Components/Pages/ForgotPassword.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xGb3Jnb3RQYXNzd29yZC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
@@ -126,6 +130,26 @@ build_metadata.AdditionalFiles.CssScope = b-9063ytfrl5
 [C:/Users/User/RentLog/Components/MediaUploader.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNZWRpYVVwbG9hZGVyLnJhem9y
 build_metadata.AdditionalFiles.CssScope = b-ru4b1do93a
+
+[C:/Users/User/RentLog/Components/Pages/ContractorDashboard.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xDb250cmFjdG9yRGFzaGJvYXJkLnJhem9y
+build_metadata.AdditionalFiles.CssScope = b-4osgj0f93p
+
+[C:/Users/User/RentLog/Components/Pages/ContractorJobDetail.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xDb250cmFjdG9ySm9iRGV0YWlsLnJhem9y
+build_metadata.AdditionalFiles.CssScope = b-ckrv80h3vg
+
+[C:/Users/User/RentLog/Components/Pages/LandlordAlerts.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMYW5kbG9yZEFsZXJ0cy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = b-0hldj87miz
+
+[C:/Users/User/RentLog/Components/Pages/LandlordApprovals.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMYW5kbG9yZEFwcHJvdmFscy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = b-00027haybj
+
+[C:/Users/User/RentLog/Components/Pages/LandlordContractors.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMYW5kbG9yZENvbnRyYWN0b3JzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = b-5h3n91ebze
 
 [C:/Users/User/RentLog/Components/Pages/LandlordDashboard.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMYW5kbG9yZERhc2hib2FyZC5yYXpvcg==

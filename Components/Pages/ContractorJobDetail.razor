@@ -1,0 +1,401 @@
+@page "/contractor/jobs/{IssueId}"
+@inject IAuthService AuthService
+@inject IContractorService ContractorService
+@inject ILogger<ContractorJobDetail> Logger
+@inject NavigationManager Navigation
+
+<PageTitle>@(_job?.Title ?? "Job details") | Rent Log</PageTitle>
+
+<main class="contractor-dashboard contractor-job-detail">
+    <a class="back-link" href="/contractor">← Back to job board</a>
+    @if (_isLoading)
+    {
+        <p role="status" class="route-status">Loading job details...</p>
+        <LoadingSkeleton ShowCard="true" />
+    }
+    else if (_errorMessage is not null)
+    {
+        <div class="alert alert-danger" role="alert">@_errorMessage</div>
+    }
+    else if (_job is not null)
+    {
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <div class="alert @(_messageFailed ? "alert-danger" : "alert-success")" role="@(_messageFailed ? "alert" : "status")">@_message</div>
+        }
+        <article class="card job-detail-card">
+            <div class="job-detail-top">
+                @if (_job.Severity == Severity.Emergency)
+                {
+                    <span class="emergency-badge">EMERGENCY</span>
+                }
+                <SeverityBadge Severity="@_job.Severity" />
+                @if (_job.AssignedToMe)
+                {
+                    <span class="status-badge">@DisplayStatus(_job.ContractorStatus)</span>
+                }
+            </div>
+            <p class="eyebrow">@(!string.IsNullOrWhiteSpace(_job.PropertyName) ? _job.PropertyName : _job.LandlordLabel)</p>
+            <h1>@_job.Title</h1>
+            <p class="job-detail-meta">
+                @if (!string.IsNullOrWhiteSpace(_job.Category))
+                {
+                    <span>@_job.Category</span>
+                }
+                @if (!string.IsNullOrWhiteSpace(_job.Suburb))
+                {
+                    <span>@_job.Suburb</span>
+                }
+            </p>
+            <p class="job-detail-description">@_job.Description</p>
+
+            @if (IsApprovedJob(_job))
+            {
+                <section class="approved-details" aria-label="Approved job location and access details">
+                    <h2>Approved job details</h2>
+                    <p>@_job.PropertyAddress · Unit @_job.UnitNumber</p>
+                    <h3>Tenant preferred time windows</h3>
+                    @if (_job.PreferredWindows.Count > 0)
+                    {
+                        <ul class="preferred-window-list">
+                            @foreach (var window in _job.PreferredWindows)
+                            {
+                                <li>@window</li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p class="text-secondary">No preferred time windows were provided.</p>
+                    }
+                </section>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_job.ReopenNote))
+            {
+                <p class="reopen-note"><strong>Tenant reopened this job:</strong> @_job.ReopenNote</p>
+            }
+
+            @if (!_job.AssignedToMe)
+            {
+                <button type="button" class="btn btn-primary" @onclick="AcceptAsync" disabled="@_isSubmitting">
+                    @(_isSubmitting ? "Accepting..." : "Accept job")
+                </button>
+            }
+            else
+            {
+                <section class="job-evidence" aria-labelledby="evidence-heading">
+                    <h2 id="evidence-heading">Issue photos and videos</h2>
+                    @if (_isLoadingMedia)
+                    {
+                        <p role="status" class="text-secondary">Loading issue evidence...</p>
+                    }
+                    else if (_jobMedia.Count == 0)
+                    {
+                        <p class="text-secondary">No photos or videos have been added to this issue.</p>
+                    }
+                    else
+                    {
+                        <div class="job-media-grid">
+                            @foreach (var media in _jobMedia)
+                            {
+                                <figure @key="media.SignedUrl">
+                                    @if (media.ContentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <video controls preload="metadata" src="@media.SignedUrl">
+                                            Your browser does not support video playback.
+                                        </video>
+                                    }
+                                    else
+                                    {
+                                        <a href="@media.SignedUrl" target="_blank" rel="noopener noreferrer" aria-label="@($"Open {media.FileName}")">
+                                            <img src="@media.SignedUrl" alt="@media.FileName" loading="lazy" />
+                                        </a>
+                                    }
+                                    <figcaption>@media.FileName</figcaption>
+                                </figure>
+                            }
+                        </div>
+                    }
+                </section>
+
+                <div class="contractor-job-actions">
+                    @if (_job.ContractorStatus == ContractorStatus.PendingApproval)
+                    {
+                        <p class="text-secondary">You can withdraw before the landlord approves this job.</p>
+                        <button type="button" class="btn btn-secondary" @onclick="WithdrawAsync" disabled="@_isSubmitting">Withdraw</button>
+                    }
+                    @if (_job.ContractorStatus == ContractorStatus.Approved)
+                    {
+                        <button type="button" class="btn btn-primary" @onclick="() => SetWorkStatusAsync(ContractorStatus.InProgress)" disabled="@_isSubmitting">Start work</button>
+                        <button type="button" class="btn btn-secondary" @onclick="WithdrawAsync" disabled="@_isSubmitting">Withdraw</button>
+                    }
+                    @if (_job.ContractorStatus == ContractorStatus.InProgress)
+                    {
+                        <section class="job-update-form" aria-labelledby="job-update-heading">
+                            <h2 id="job-update-heading">Work update</h2>
+                            <div class="form-field">
+                                <label class="form-label" for="job-note">Add a note</label>
+                                <InputTextArea id="job-note" class="input" rows="3" maxlength="2000" @bind-Value="_note" />
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">Completion photos or videos (optional)</label>
+                                <MediaUploader @key="_uploaderKey"
+                                               ExistingPhotoCount="@ExistingPhotoCount"
+                                               ExistingVideoCount="@ExistingVideoCount"
+                                               OnMediaUploaded="OnMediaUploaded"
+                                               OnPendingMediaChanged="OnPendingMediaChanged" />
+                                @if (_hasPendingMedia)
+                                {
+                                    <p class="text-secondary" role="status">Upload the selected files before saving this update.</p>
+                                }
+                            </div>
+                            <div class="contractor-job-actions">
+                                <button type="button" class="btn btn-secondary" @onclick="SaveUpdateAsync"
+                                        disabled="@(_isSubmitting || _hasPendingMedia || (string.IsNullOrWhiteSpace(_note) && _uploadedPaths.Count == 0))">
+                                    Save note and evidence
+                                </button>
+                                <button type="button" class="btn btn-primary" @onclick="MarkWorkDoneAsync"
+                                        disabled="@(_isSubmitting || _hasPendingMedia)">
+                                    Mark work done
+                                </button>
+                            </div>
+                        </section>
+                    }
+                    @if (_job.ContractorStatus == ContractorStatus.WorkDone)
+                    {
+                        <p class="text-secondary">Work is marked done. The tenant has been asked to verify the repair.</p>
+                    }
+                    @if (_job.ContractorStatus == ContractorStatus.Completed)
+                    {
+                        <p class="text-secondary">This job is completed.</p>
+                    }
+                </div>
+            }
+        </article>
+    }
+</main>
+
+@code {
+    [Parameter]
+    public string IssueId { get; set; } = string.Empty;
+
+    private AuthUser? _contractor;
+    private ContractorJob? _job;
+    private IReadOnlyList<ContractorMedia> _jobMedia = [];
+    private List<string> _uploadedPaths = [];
+    private string _note = string.Empty;
+    private string? _errorMessage;
+    private string? _message;
+    private bool _messageFailed;
+    private bool _isLoading = true;
+    private bool _isLoadingMedia;
+    private bool _isSubmitting;
+    private bool _hasPendingMedia;
+    private int _uploaderKey;
+
+    private int ExistingPhotoCount => _jobMedia.Count(media => media.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase));
+    private int ExistingVideoCount => _jobMedia.Count(media => media.ContentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        try
+        {
+            _contractor = await AuthService.GetCurrentUserAsync();
+            if (_contractor?.Role != UserRole.Contractor)
+            {
+                Navigation.NavigateTo("/login", replace: true);
+                return;
+            }
+
+            await LoadJobAsync();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load contractor job {IssueId}.", IssueId);
+            _errorMessage = "We couldn't load this job. Return to the board and try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadJobAsync()
+    {
+        var contractor = _contractor ?? throw new InvalidOperationException("The contractor session is not available.");
+        var myJobs = await ContractorService.GetMyJobsAsync(contractor);
+        _job = myJobs.FirstOrDefault(job => job.IssueId == IssueId);
+        if (_job is null)
+        {
+            var availableJobs = await ContractorService.GetAvailableJobsAsync(contractor);
+            _job = availableJobs.FirstOrDefault(job => job.IssueId == IssueId);
+        }
+
+        if (_job is null)
+        {
+            _errorMessage = "This job is no longer available to your contractor account.";
+            return;
+        }
+
+        _jobMedia = [];
+        if (_job.AssignedToMe)
+        {
+            _isLoadingMedia = true;
+            try
+            {
+                _jobMedia = await ContractorService.GetJobMediaAsync(contractor, IssueId);
+            }
+            finally
+            {
+                _isLoadingMedia = false;
+            }
+        }
+    }
+
+    private async Task AcceptAsync()
+    {
+        if (_contractor is null || _isSubmitting || _job is null || _job.AssignedToMe)
+        {
+            return;
+        }
+
+        _isSubmitting = true;
+        _message = null;
+        try
+        {
+            await ContractorService.AcceptJobAsync(_contractor, IssueId);
+            _message = "Job accepted and waiting for landlord approval.";
+            _messageFailed = false;
+            await LoadJobAsync();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Contractor could not accept job {IssueId}.", IssueId);
+            if (exception.Message.Contains("already taken", StringComparison.OrdinalIgnoreCase))
+            {
+                Navigation.NavigateTo("/contractor?jobTaken=true");
+                return;
+            }
+
+            _message = "We couldn't accept this job. Refresh the job board and try again.";
+            _messageFailed = true;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private Task WithdrawAsync() =>
+        RunJobActionAsync(() => ContractorService.WithdrawJobAsync(_contractor!, IssueId),
+            "You withdrew from the job. It is open for other contractors.");
+
+    private Task SetWorkStatusAsync(ContractorStatus status) =>
+        RunJobActionAsync(() => ContractorService.SetWorkStatusAsync(_contractor!, IssueId, status),
+            "Work marked in progress.");
+
+    private void OnMediaUploaded(List<string> paths) => _uploadedPaths = paths;
+
+    private void OnPendingMediaChanged(bool pending) => _hasPendingMedia = pending;
+
+    private async Task SaveUpdateAsync()
+    {
+        if (_contractor is null || _job?.ContractorStatus != ContractorStatus.InProgress ||
+            _hasPendingMedia || (string.IsNullOrWhiteSpace(_note) && _uploadedPaths.Count == 0))
+        {
+            return;
+        }
+
+        await RunJobActionAsync(
+            () => ContractorService.AddJobUpdateAsync(_contractor, IssueId, _note, _uploadedPaths),
+            "Your note and evidence were added.");
+        if (!_messageFailed)
+        {
+            ResetUpdateForm();
+        }
+    }
+
+    private async Task MarkWorkDoneAsync()
+    {
+        if (_contractor is null || _job?.ContractorStatus != ContractorStatus.InProgress || _hasPendingMedia)
+        {
+            return;
+        }
+
+        _isSubmitting = true;
+        _message = null;
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(_note) || _uploadedPaths.Count > 0)
+            {
+                await ContractorService.AddJobUpdateAsync(_contractor, IssueId, _note, _uploadedPaths);
+            }
+            await ContractorService.SetWorkStatusAsync(_contractor, IssueId, ContractorStatus.WorkDone);
+            _message = "Work marked done. The landlord was notified and the tenant can verify the repair.";
+            _messageFailed = false;
+            ResetUpdateForm();
+            await LoadJobAsync();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to mark contractor job {IssueId} as work done.", IssueId);
+            _message = "We couldn't complete that job update. Please try again.";
+            _messageFailed = true;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task RunJobActionAsync(Func<Task> action, string successMessage)
+    {
+        if (_isSubmitting)
+        {
+            return;
+        }
+
+        _isSubmitting = true;
+        _message = null;
+        try
+        {
+            await action();
+            _message = successMessage;
+            _messageFailed = false;
+            await LoadJobAsync();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Contractor job action failed for {IssueId}.", IssueId);
+            _message = "We couldn't update this job. Please refresh and try again.";
+            _messageFailed = true;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private void ResetUpdateForm()
+    {
+        _note = string.Empty;
+        _uploadedPaths = [];
+        _hasPendingMedia = false;
+        _uploaderKey++;
+    }
+
+    private static bool IsApprovedJob(ContractorJob job) =>
+        job.ContractorStatus is ContractorStatus.Approved or ContractorStatus.InProgress or
+            ContractorStatus.WorkDone or ContractorStatus.Completed;
+
+    private static string DisplayStatus(ContractorStatus status) => status switch
+    {
+        ContractorStatus.PendingApproval => "Pending approval",
+        ContractorStatus.InProgress => "In progress",
+        ContractorStatus.WorkDone => "Work done",
+        _ => status.ToString()
+    };
+}

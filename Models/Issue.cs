@@ -61,4 +61,30 @@ public class Issue
     public List<IssueQuote> Quotes { get; set; } = [];
 
     public string? ContractorName { get; set; }
+
+    public string? ContractorFirstName { get; set; }
+
+    public string? ContractorTrade { get; set; }
+
+    public string? Category { get; set; }
+
+    public List<string> PreferredWindows { get; set; } = [];
+
+    public bool ReleasedToContractors { get; set; }
+
+    public string? AssignedContractorId { get; set; }
+
+    public ContractorStatus ContractorStatus { get; set; } = ContractorStatus.Reported;
+
+    public DateTime? AcceptedAt { get; set; }
+
+    public DateTime? LandlordSeenAt { get; set; }
+
+    public DateTime? WorkDoneAt { get; set; }
+
+    public DateTime? TenantVerifiedAt { get; set; }
+
+    public string? ReopenNote { get; set; }
+
+    public bool IsNewForLandlord => LandlordSeenAt is null;
 }

@@ -36,7 +36,15 @@
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 						<path d="M12 2l3 8h8l-6.5 5 2.5 8-7-5-7 5 2.5-8L1 10h8l3-8z" />
 					</svg>
-					<span>Properties</span>
+					<span>Buildings &amp; units</span>
+				</a>
+				<a href="/landlord/contractors" class="nav-item @(IsActive("/landlord/contractors") ? "active" : "")" title="Trusted contractors">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+						<circle cx="10" cy="7" r="4" />
+						<path d="M20 8v6m-3-3h6" />
+					</svg>
+					<span>Contractors</span>
 				</a>
 				<a href="/landlord/issues" class="nav-item @(IsActive("/landlord/issues") ? "active" : "")" title="Issues">
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -45,6 +53,20 @@
 						<line x1="12" y1="16" x2="12.01" y2="16" />
 					</svg>
 					<span>Issues</span>
+				</a>
+				<a href="/landlord/alerts" class="nav-item @(IsActive("/landlord/alerts") ? "active" : "")" title="Alerts">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+						<path d="M10 21h4" />
+					</svg>
+					<span>Alerts</span>
+				</a>
+				<a href="/landlord/approvals" class="nav-item @(IsActive("/landlord/approvals") ? "active" : "")" title="Job approvals">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<path d="M9 11l3 3L22 4" />
+						<path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+					</svg>
+					<span>Job approvals</span>
 				</a>
 				<a href="/landlord/ledger" class="nav-item @(IsActive("/landlord/ledger") ? "active" : "")" title="Rent Ledger">
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

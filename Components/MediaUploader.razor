@@ -38,8 +38,8 @@
 
 	<!-- Count info -->
 	<div class="uploader-count" aria-live="polite">
-		Photos: @SelectedMedia.Count(m => m.MimeType.StartsWith("image")) / 5
-		&nbsp;&nbsp;Videos: @SelectedMedia.Count(m => m.MimeType.StartsWith("video")) / 2
+		Photos: @(ExistingPhotoCount + SelectedMedia.Count(m => m.MimeType.StartsWith("image"))) / 5
+		&nbsp;&nbsp;Videos: @(ExistingVideoCount + SelectedMedia.Count(m => m.MimeType.StartsWith("video"))) / 2
 	</div>
 
 	<!-- Thumbnails grid -->
@@ -143,6 +143,12 @@
 	[Parameter]
 	public string CssClass { get; set; } = string.Empty;
 
+	[Parameter]
+	public int ExistingPhotoCount { get; set; }
+
+	[Parameter]
+	public int ExistingVideoCount { get; set; }
+
 	private List<MediaFile> SelectedMedia { get; set; } = new();
 	private List<string> UploadedUrls { get; set; } = new();
 	private string ErrorMessage { get; set; } = string.Empty;
@@ -183,7 +189,7 @@
 					break;
 				}
 
-				var photoCount = SelectedMedia.Count(m => m.MimeType.StartsWith("image"));
+				var photoCount = ExistingPhotoCount + SelectedMedia.Count(m => m.MimeType.StartsWith("image"));
 				if (photoCount >= 5 || files.Count(m => m.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase)) > 5 - photoCount)
 				{
 					ErrorMessage = "Maximum 5 photos allowed.";
@@ -199,7 +205,7 @@
 					break;
 				}
 
-				var videoCount = SelectedMedia.Count(m => m.MimeType.StartsWith("video"));
+				var videoCount = ExistingVideoCount + SelectedMedia.Count(m => m.MimeType.StartsWith("video"));
 				if (videoCount >= 2 || files.Count(m => m.ContentType.StartsWith("video", StringComparison.OrdinalIgnoreCase)) > 2 - videoCount)
 				{
 					ErrorMessage = "Maximum 2 videos allowed.";

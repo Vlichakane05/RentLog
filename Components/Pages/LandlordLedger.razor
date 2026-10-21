@@ -159,11 +159,19 @@
             var propertiesTask = PropertyService.GetPropertiesAsync(landlord.Id);
             await Task.WhenAll(entriesTask, propertiesTask);
 
-            var units = (await propertiesTask)
-                .SelectMany(property => property.Units.Select(unit => new UnitOption(unit.Id, unit.UnitNumber, property.Name, unit.TenantId, unit.TenantName)))
+            var properties = await propertiesTask;
+            var units = properties
+                .SelectMany(property => property.Units.Select(unit =>
+                    new UnitOption(unit.Id, unit.UnitNumber, property.Name, unit.TenantId, unit.TenantName)))
                 .ToList();
-            _unitOptions = units.OrderBy(unit => unit.UnitNumber, StringComparer.OrdinalIgnoreCase).ToList();
-            var unitsByTenant = units.Where(unit => !string.IsNullOrWhiteSpace(unit.TenantId)).ToDictionary(unit => unit.TenantId);
+            _unitOptions = units
+                .OrderBy(unit => unit.UnitNumber, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            var unitsByTenant = properties
+                .SelectMany(property => property.Units.SelectMany(unit => unit.Tenants.Select(tenant =>
+                    new UnitOption(unit.Id, unit.UnitNumber, property.Name, tenant.Id, tenant.Name))))
+                .Where(unit => !string.IsNullOrWhiteSpace(unit.TenantId))
+                .ToDictionary(unit => unit.TenantId);
             _rentRows = (await entriesTask)
                 .Where(entry => unitsByTenant.ContainsKey(entry.TenantId))
                 .Select(entry =>

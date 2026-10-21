@@ -22,6 +22,29 @@ public sealed class SupabaseAuthService(SupabaseClientProvider clientProvider) :
         return CurrentUser;
     }
 
+    public async Task<AuthUser?> RegisterAsync(
+        string email,
+        string password,
+        IReadOnlyDictionary<string, object> userData)
+    {
+        ArgumentNullException.ThrowIfNull(userData);
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        {
+            throw new ArgumentException("An email address and password are required.");
+        }
+
+        var client = await clientProvider.GetClientAsync();
+        await client.Auth.SignUp(
+            email.Trim(),
+            password,
+            new Supabase.Gotrue.SignUpOptions
+            {
+                Data = userData.ToDictionary(entry => entry.Key, entry => entry.Value)
+            });
+        CurrentUser = await LoadProfileAsync(client);
+        return CurrentUser;
+    }
+
     public async Task LogoutAsync()
     {
         var client = await clientProvider.GetClientAsync();

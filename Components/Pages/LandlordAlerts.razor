@@ -1,0 +1,316 @@
+@page "/landlord/alerts"
+@layout LandlordLayout
+@inject IAuthService AuthService
+@inject IIssueService IssueService
+@inject ILandlordContractorJobsService LandlordJobsService
+@inject ILandlordContractorManagementService ContractorManagementService
+@inject ILogger<LandlordAlerts> Logger
+@inject NavigationManager Navigation
+
+<PageTitle>Alerts | Rent Log</PageTitle>
+
+<div class="landlord-page landlord-alerts">
+    <header class="page-heading">
+        <p class="eyebrow">MAINTENANCE</p>
+        <h1>Alerts</h1>
+        <p class="text-secondary">New alerts remain here until you open or action the issue.</p>
+    </header>
+
+    @if (_isLoading)
+    {
+        <p role="status" class="text-secondary">Loading alerts...</p>
+        <LoadingSkeleton Lines="5" />
+    }
+    else if (_errorMessage is not null)
+    {
+        <div class="alert alert-danger" role="alert">@_errorMessage</div>
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(_actionMessage))
+        {
+            <div class="alert alert-success" role="status">@_actionMessage</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(_actionError))
+        {
+            <div class="alert alert-danger" role="alert">@_actionError</div>
+        }
+
+        <section class="alert-section" aria-labelledby="new-alerts-heading">
+            <h2 id="new-alerts-heading">New <span class="alert-count">@NewIssues.Count</span></h2>
+            @if (NewIssues.Count == 0)
+            {
+                <p class="text-secondary">You’re all caught up on new alerts.</p>
+            }
+            else
+            {
+                <div class="alert-list">
+                    @foreach (var issue in NewIssues)
+                    {
+                        @IssueAlert(issue)
+                    }
+                </div>
+            }
+        </section>
+
+        <section class="alert-section" aria-labelledby="earlier-alerts-heading">
+            <h2 id="earlier-alerts-heading">Earlier <span class="alert-count">@EarlierIssues.Count</span></h2>
+            @if (EarlierIssues.Count == 0)
+            {
+                <p class="text-secondary">Issues you’ve opened or actioned will appear here.</p>
+            }
+            else
+            {
+                <div class="alert-list">
+                    @foreach (var issue in EarlierIssues)
+                    {
+                        @IssueAlert(issue)
+                    }
+                </div>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    private static readonly CultureInfo ZaCulture = CultureInfo.GetCultureInfo("en-ZA");
+    private static readonly string[] WorkCategories =
+    [
+        "Plumbing", "Electrical", "Appliance", "Locks and Security", "Pest Control", "General Maintenance"
+    ];
+    private AuthUser? _landlord;
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string? _errorMessage;
+    private string? _actionMessage;
+    private string? _actionError;
+    private string? _warningReleaseIssueId;
+    private string? _categoryRequiredIssueId;
+    private readonly Dictionary<string, string> _selectedCategories = [];
+    private List<Issue> _issues = [];
+    private List<ContractorAccount> _contractors = [];
+    private List<LandlordNotification> _notifications = [];
+
+    private List<Issue> NewIssues => SortIssues(_issues.Where(issue => issue.LandlordSeenAt is null));
+    private List<Issue> EarlierIssues => SortIssues(_issues.Where(issue => issue.LandlordSeenAt is not null));
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _landlord = await AuthService.GetCurrentUserAsync();
+            if (_landlord is null || _landlord.Role != UserRole.Landlord)
+            {
+                Navigation.NavigateTo("/login", replace: true);
+                return;
+            }
+
+            await LoadDataAsync();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load landlord alerts.");
+            _errorMessage = "We couldn't load alerts. Please try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private RenderFragment IssueAlert(Issue issue) => @<article @key="issue.Id" class="alert-card @(issue.Severity == Severity.Emergency ? "alert-card-emergency" : string.Empty)">
+        <div class="alert-card-badges">
+            @if (issue.Severity == Severity.Emergency)
+            {
+                <span class="emergency-alert-badge">EMERGENCY</span>
+            }
+            <SeverityBadge Severity="@issue.Severity" />
+            <span class="contractor-status-badge">@DisplayStatus(issue.ContractorStatus)</span>
+        </div>
+        <a class="alert-card-title" href="@($"/landlord/issues/{issue.Id}")">@issue.Title</a>
+        <p class="alert-card-meta">Unit @issue.Unit · @issue.Category · reported @issue.CreatedAt.ToLocalTime().ToString("dd MMM yyyy", ZaCulture)</p>
+        @if (_categoryRequiredIssueId == issue.Id)
+        {
+            <div class="release-category-panel">
+                <label class="form-label" for="@($"release-category-{issue.Id}")">Choose the work category</label>
+                <select id="@($"release-category-{issue.Id}")" class="input" @bind="_selectedCategories[issue.Id]">
+                    <option value="">Choose a category</option>
+                    @foreach (var category in WorkCategories)
+                    {
+                        <option value="@category">@category</option>
+                    }
+                </select>
+                <button type="button" class="btn btn-primary"
+                        @onclick="() => SaveCategoryAndContinueAsync(issue)"
+                        disabled="@(_isSaving || string.IsNullOrWhiteSpace(SelectedCategory(issue.Id)))">
+                    Save category and continue
+                </button>
+            </div>
+        }
+        @foreach (var notification in NotificationsFor(issue.Id))
+        {
+            <p class="alert-event" role="status">@notification.Message <span>@notification.CreatedAt.ToLocalTime().ToString("dd MMM yyyy, HH:mm", ZaCulture)</span></p>
+        }
+        @if (_warningReleaseIssueId == issue.Id)
+        {
+            <div class="alert alert-warning" role="alert">
+                No active contractor is linked for @issue.Category. You can still release this job to the contractor board.
+                <button type="button" class="btn btn-primary" @onclick="() => ReleaseJobAsync(issue, allowWithoutTrade: true)" disabled="@_isSaving">Release anyway</button>
+            </div>
+        }
+        @if (CanRelease(issue))
+        {
+            <button type="button" class="btn btn-secondary" @onclick="() => BeginReleaseAsync(issue)" disabled="@_isSaving">
+                Release to contractors
+            </button>
+        }
+        else
+        {
+            <a class="btn btn-secondary" href="@($"/landlord/issues/{issue.Id}")">Review issue</a>
+        }
+    </article>;
+
+    private async Task LoadDataAsync()
+    {
+        var landlord = _landlord ?? throw new InvalidOperationException("The landlord session is not available.");
+        _issues = (await IssueService.GetLandlordIssuesAsync(landlord.Id)).ToList();
+        _contractors = (await ContractorManagementService.GetLandlordContractorsAsync(landlord)).ToList();
+        _notifications = (await LandlordJobsService.GetLandlordNotificationsAsync(landlord)).ToList();
+    }
+
+    private async Task BeginReleaseAsync(Issue issue)
+    {
+        _actionError = null;
+        _actionMessage = null;
+        _warningReleaseIssueId = null;
+        if (string.IsNullOrWhiteSpace(issue.Category))
+        {
+            _categoryRequiredIssueId = issue.Id;
+            _selectedCategories.TryAdd(issue.Id, string.Empty);
+            return;
+        }
+
+        if (!HasActiveContractorForTrade(issue.Category))
+        {
+            _warningReleaseIssueId = issue.Id;
+            return;
+        }
+
+        await ReleaseJobAsync(issue, allowWithoutTrade: false);
+    }
+
+    private string? SelectedCategory(string issueId) =>
+        _selectedCategories.TryGetValue(issueId, out var category) ? category : null;
+
+    private async Task SaveCategoryAndContinueAsync(Issue issue)
+    {
+        if (_landlord is null || _isSaving)
+        {
+            return;
+        }
+
+        var category = SelectedCategory(issue.Id);
+        if (string.IsNullOrWhiteSpace(category))
+        {
+            return;
+        }
+
+        _isSaving = true;
+        _actionError = null;
+        try
+        {
+            await LandlordJobsService.SetJobDetailsAsync(
+                _landlord, issue.Id, category, issue.PreferredWindows);
+            issue.Category = category;
+            _categoryRequiredIssueId = null;
+            await LandlordJobsService.MarkJobSeenAsync(_landlord, issue.Id);
+            if (!HasActiveContractorForTrade(category))
+            {
+                _warningReleaseIssueId = issue.Id;
+                _actionMessage = "The category was saved. You can still release this job without a matching active contractor.";
+                return;
+            }
+
+            await LandlordJobsService.SetJobReleasedAsync(_landlord, issue.Id, released: true);
+            _actionMessage = $"“{issue.Title}” was released to contractors.";
+            await LoadDataAsync();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to set work category for landlord issue {IssueId}.", issue.Id);
+            _actionError = "The work category couldn't be saved. Please try again.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task ReleaseJobAsync(Issue issue, bool allowWithoutTrade)
+    {
+        if (_landlord is null || _isSaving)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(issue.Category))
+        {
+            _actionError = "Choose a work category on the issue before releasing it to contractors.";
+            return;
+        }
+
+        if (!allowWithoutTrade && !HasActiveContractorForTrade(issue.Category))
+        {
+            _warningReleaseIssueId = issue.Id;
+            return;
+        }
+
+        _isSaving = true;
+        _actionError = null;
+        _actionMessage = null;
+        try
+        {
+            await LandlordJobsService.MarkJobSeenAsync(_landlord, issue.Id);
+            await LandlordJobsService.SetJobReleasedAsync(_landlord, issue.Id, released: true);
+            _warningReleaseIssueId = null;
+            _actionMessage = $"“{issue.Title}” was released to contractors.";
+            await LoadDataAsync();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to release landlord issue {IssueId} to contractors.", issue.Id);
+            _actionError = "The issue couldn't be released. Refresh and try again.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private bool CanRelease(Issue issue) =>
+        issue.ContractorStatus == ContractorStatus.Reported &&
+        issue.AssignedContractorId is null;
+
+    private bool HasActiveContractorForTrade(string category) =>
+        _contractors.Any(contractor => contractor.Active &&
+            contractor.Trades.Contains(category, StringComparer.OrdinalIgnoreCase));
+
+    private List<LandlordNotification> NotificationsFor(string issueId) =>
+        _notifications.Where(notification => notification.IssueId == issueId)
+            .OrderByDescending(notification => notification.CreatedAt)
+            .ToList();
+
+    private static List<Issue> SortIssues(IEnumerable<Issue> issues) =>
+        issues.OrderByDescending(issue => issue.Severity == Severity.Emergency)
+            .ThenByDescending(issue => issue.CreatedAt)
+            .ToList();
+
+    private static string DisplayStatus(ContractorStatus status) => status switch
+    {
+        ContractorStatus.OpenForContractors => "Open for contractors",
+        ContractorStatus.PendingApproval => "Pending approval",
+        ContractorStatus.InProgress => "In progress",
+        ContractorStatus.WorkDone => "Work done",
+        _ => status.ToString()
+    };
+}

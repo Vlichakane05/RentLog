@@ -65,6 +65,53 @@
                 <InputTextArea id="issue-description" class="input description-input" @bind-Value="_form.Description" maxlength="3000" rows="5" placeholder="Describe the problem and where it is..." />
                 <ValidationMessage For="@(() => _form.Description)" />
             </div>
+            <div class="form-field">
+                <label class="form-label" for="issue-category">Work category</label>
+                <InputSelect id="issue-category" class="input" @bind-Value="_form.Category">
+                    <option value="">Choose a category</option>
+                    @foreach (var category in WorkCategories)
+                    {
+                        <option value="@category">@category</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="@(() => _form.Category)" />
+            </div>
+            <fieldset class="preferred-windows-fieldset">
+                <legend class="form-label">Preferred time windows</legend>
+                <p class="text-secondary">Add one or more dates and the times that work for access.</p>
+                @for (var index = 0; index < _form.PreferredWindows.Count; index++)
+                {
+                    var window = _form.PreferredWindows[index];
+                    <div class="preferred-window-row" @key="window">
+                        <div class="form-field">
+                            <label class="form-label" for="@($"preferred-date-{index}")">Date</label>
+                            <InputDate id="@($"preferred-date-{index}")" class="input" @bind-Value="window.Date" />
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label" for="@($"preferred-time-{index}")">Time</label>
+                            <InputSelect id="@($"preferred-time-{index}")" class="input" @bind-Value="window.Time">
+                                <option value="">Choose a time</option>
+                                @foreach (var timeWindow in TimeWindows)
+                                {
+                                    <option value="@timeWindow">@timeWindow</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <button type="button"
+                                class="btn btn-secondary remove-preferred-window"
+                                aria-label="@($"Remove preferred time window {index + 1}")"
+                                @onclick="() => RemovePreferredWindow(window)"
+                                disabled="@(_form.PreferredWindows.Count == 1)">
+                            Remove
+                        </button>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(_preferredWindowsError))
+                {
+                    <p class="validation-message" role="alert">@_preferredWindowsError</p>
+                }
+                <button type="button" class="btn btn-secondary" @onclick="AddPreferredWindow">Add another date</button>
+            </fieldset>
             <fieldset class="severity-fieldset">
                 <legend class="form-label">How urgent is it?</legend>
                 <InputRadioGroup @bind-Value="_form.Severity" class="severity-options">
@@ -111,6 +158,16 @@
 </div>
 
 @code {
+    private static readonly string[] WorkCategories =
+    [
+        "Plumbing",
+        "Electrical",
+        "Appliance",
+        "Locks and Security",
+        "Pest Control",
+        "General Maintenance"
+    ];
+    private static readonly string[] TimeWindows = ["Morning", "Afternoon", "Evening", "Anytime"];
     private readonly NewIssueForm _form = new();
     private AuthUser? _tenant;
     private List<TenantUnitOption> _tenantUnits = [];
@@ -121,6 +178,7 @@
     private bool _isSubmitting;
     private string? _pageError;
     private string? _submitError;
+    private string? _preferredWindowsError;
 
     protected override async Task OnInitializedAsync()
     {
@@ -164,6 +222,21 @@
         _hasPendingMedia = hasPendingMedia;
     }
 
+    private void AddPreferredWindow()
+    {
+        _form.PreferredWindows.Add(new PreferredWindowInput());
+        _preferredWindowsError = null;
+    }
+
+    private void RemovePreferredWindow(PreferredWindowInput window)
+    {
+        if (_form.PreferredWindows.Count > 1)
+        {
+            _form.PreferredWindows.Remove(window);
+            _preferredWindowsError = null;
+        }
+    }
+
     private async Task SubmitAsync()
     {
         if (_tenant is null || _isSubmitting)
@@ -172,6 +245,20 @@
             return;
         }
 
+        if (string.IsNullOrWhiteSpace(_form.Category))
+        {
+            _submitError = "Choose a work category.";
+            return;
+        }
+        if (_form.PreferredWindows.Count == 0 ||
+            _form.PreferredWindows.Any(window =>
+                window.Date is null || !TimeWindows.Contains(window.Time, StringComparer.Ordinal)))
+        {
+            _preferredWindowsError = "Choose a date and time window for each entry.";
+            return;
+        }
+
+        _preferredWindowsError = null;
         _isSubmitting = true;
         _submitError = null;
         try
@@ -182,6 +269,10 @@
                 _form.Title,
                 _form.Description,
                 _form.Severity,
+                _form.Category,
+                _form.PreferredWindows
+                    .Select(window => $"{window.Date!.Value:yyyy-MM-dd} · {window.Time}")
+                    .ToList(),
                 _mediaUrls);
         }
         catch (Exception exception)
@@ -208,6 +299,17 @@
         [StringLength(3000, MinimumLength = 10, ErrorMessage = "The description must be between 10 and 3,000 characters.")]
         public string Description { get; set; } = string.Empty;
 
+        [Required(ErrorMessage = "Choose a work category.")]
+        public string Category { get; set; } = string.Empty;
+
+        public List<PreferredWindowInput> PreferredWindows { get; } = [new()];
+
         public Severity Severity { get; set; } = Severity.Medium;
+    }
+
+    private sealed class PreferredWindowInput
+    {
+        public DateOnly? Date { get; set; }
+        public string Time { get; set; } = string.Empty;
     }
 }

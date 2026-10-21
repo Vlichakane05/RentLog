@@ -53,7 +53,8 @@
             </button>
         </EditForm>
 
-        <p class="register-prompt">New to Rent Log? <a href="/register">Register or accept an invite</a></p>
+        <p class="register-prompt">New tenant? <a href="/register">Register with a unit invite</a></p>
+        <p class="register-prompt">Contractor? <a href="/contractor/join">Join with a contractor invite</a></p>
         @if (BackendMode.UsesMockData)
         {
             <details class="test-accounts">
@@ -123,6 +124,7 @@
         {
             UserRole.Tenant => "/tenant",
             UserRole.Landlord => "/landlord",
+            UserRole.Contractor => "/contractor",
             _ => "/login"
         };
 

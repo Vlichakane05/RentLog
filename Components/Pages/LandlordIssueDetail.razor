@@ -2,6 +2,8 @@
 @layout LandlordLayout
 @inject IAuthService AuthService
 @inject IIssueService IssueService
+@inject ILandlordContractorJobsService LandlordJobsService
+@inject BackendMode BackendMode
 @inject ILogger<LandlordIssueDetail> Logger
 @inject NavigationManager Navigation
 
@@ -225,6 +227,11 @@
             {
                 _errorMessage = "This issue could not be found in your managed properties.";
             }
+            else if (_issue.LandlordSeenAt is null)
+            {
+                await LandlordJobsService.MarkJobSeenAsync(_landlord, IssueId);
+                _issue.LandlordSeenAt = DateTime.UtcNow;
+            }
         }
         catch (Exception exception)
         {
@@ -273,10 +280,15 @@
         _actionError = null;
         try
         {
-            await using var stream = _selectedQuoteFile.OpenReadStream(10 * 1024 * 1024);
-            using var memoryStream = new MemoryStream();
-            await stream.CopyToAsync(memoryStream);
-            var fileDataUrl = $"data:{contentType};base64,{Convert.ToBase64String(memoryStream.ToArray())}";
+            byte[] fileBytes = [];
+            if (!BackendMode.UsesMockData)
+            {
+                await using var stream = _selectedQuoteFile.OpenReadStream(10 * 1024 * 1024);
+                using var memoryStream = new MemoryStream();
+                await stream.CopyToAsync(memoryStream);
+                fileBytes = memoryStream.ToArray();
+            }
+
             var quote = await IssueService.AddQuoteAsync(
                 _landlord,
                 _issue.Id,
@@ -284,7 +296,8 @@
                 _quoteForm.Amount,
                 _quoteForm.WorkDescription,
                 _selectedQuoteFile.Name,
-                fileDataUrl);
+                contentType,
+                fileBytes);
             if (quote is null)
             {
                 _actionError = "The quote couldn't be attached to this issue.";

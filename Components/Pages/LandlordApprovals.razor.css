@@ -1,0 +1,128 @@
+.landlord-approvals {
+    width: min(100%, 70rem);
+    margin: 0 auto;
+}
+
+.approval-list {
+    display: grid;
+    gap: var(--space-4);
+}
+
+.approval-card {
+    display: grid;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.approval-card-top,
+.approval-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.approval-status {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+}
+
+.approval-card h2,
+.approval-card h3,
+.approval-card p {
+    margin: 0;
+}
+
+.approval-card h2 {
+    font-size: var(--font-size-xl);
+}
+
+.approval-card h2 a {
+    color: var(--color-text);
+}
+
+.approval-meta {
+    color: var(--color-text-secondary);
+}
+
+.claim-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+    gap: var(--space-3);
+    margin: 0;
+}
+
+.claim-details div {
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--color-primary-subtle-bg);
+}
+
+.claim-details dt {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.claim-details dd {
+    margin: var(--space-1) 0 0;
+    color: var(--color-text);
+    font-weight: var(--font-weight-semibold);
+    overflow-wrap: anywhere;
+}
+
+.preferred-windows {
+    display: grid;
+    gap: var(--space-2);
+}
+
+.preferred-windows h3 {
+    font-size: var(--font-size-base);
+}
+
+.preferred-windows ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.preferred-windows li {
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+}
+
+.reassign-panel {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--color-background-subtle, var(--color-primary-subtle-bg));
+}
+
+.reassign-panel .input {
+    width: 100%;
+}
+
+@media (max-width: 40rem) {
+    .approval-card {
+        padding: var(--space-3);
+    }
+
+    .approval-actions {
+        display: grid;
+    }
+
+    .approval-actions .btn,
+    .reassign-panel .btn {
+        width: 100%;
+    }
+}

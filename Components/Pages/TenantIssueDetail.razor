@@ -30,7 +30,61 @@
             </div>
         </header>
 
-        @if (_issue.Status == Status.AwaitingConfirmation)
+        <section class="card contractor-work-status" aria-labelledby="contractor-status-heading">
+            <div>
+                <p class="eyebrow">CONTRACTOR WORK</p>
+                <h2 id="contractor-status-heading">@GetContractorStatusLabel(_issue.ContractorStatus)</h2>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(_issue.ContractorFirstName) &&
+                !string.IsNullOrWhiteSpace(_issue.ContractorTrade))
+            {
+                <p class="text-secondary">Assigned contractor: @_issue.ContractorFirstName · @_issue.ContractorTrade</p>
+            }
+            @if (_issue.PreferredWindows.Count > 0)
+            {
+                <div>
+                    <span class="form-label">Your preferred times</span>
+                    <ul class="preferred-window-summary">
+                        @foreach (var window in _issue.PreferredWindows)
+                        {
+                            <li @key="window">@window</li>
+                        }
+                    </ul>
+                </div>
+            }
+        </section>
+
+        @if (_issue.ContractorStatus == ContractorStatus.WorkDone)
+        {
+            <section class="resolution-actions card contractor-resolution-actions" aria-labelledby="contractor-resolution-heading">
+                <h2 id="contractor-resolution-heading">Has the contractor fixed it?</h2>
+                <p class="text-secondary">Confirm the work is fixed or reopen it with a short note. If you don't respond, the job completes automatically after 7 days.</p>
+                <div class="resolution-buttons">
+                    <button type="button" class="btn btn-primary" @onclick="ConfirmContractorWorkAsync" disabled="@_isSaving">Confirm fixed</button>
+                    <button type="button" class="btn btn-secondary" @onclick="() => _showReopenForm = !_showReopenForm" disabled="@_isSaving">Reopen</button>
+                </div>
+                @if (_showReopenForm)
+                {
+                    <EditForm Model="_reopenForm" OnValidSubmit="SubmitReopenAsync" class="comment-form">
+                        <DataAnnotationsValidator />
+                        <div class="form-field">
+                            <label class="form-label" for="reopen-note">What still needs attention?</label>
+                            <InputTextArea id="reopen-note" class="input description-input" @bind-Value="_reopenForm.Note" rows="3" maxlength="500" />
+                            <ValidationMessage For="@(() => _reopenForm.Note)" />
+                        </div>
+                        <button type="submit" class="btn btn-primary" disabled="@_isSaving">Submit reopen request</button>
+                    </EditForm>
+                }
+            </section>
+        }
+        else if (_issue.ContractorStatus == ContractorStatus.Completed &&
+            _issue.TenantVerifiedAt is null && _issue.WorkDoneAt is not null)
+        {
+            <div class="alert alert-info resolved-note" role="status">This job was automatically completed after 7 days without a response.</div>
+        }
+
+        @if (_issue.Status == Status.AwaitingConfirmation &&
+            _issue.ContractorStatus != ContractorStatus.WorkDone)
         {
             <section class="resolution-actions card" aria-labelledby="resolution-heading">
                 <h2 id="resolution-heading">Has this issue been fixed?</h2>
@@ -106,10 +160,12 @@
     private bool _isLoading = true;
     private bool _isSaving;
     private bool _showDisputeForm;
+    private bool _showReopenForm;
     private string? _errorMessage;
     private string? _actionError;
     private readonly CommentForm _commentForm = new();
     private readonly DisputeForm _disputeForm = new();
+    private readonly ReopenForm _reopenForm = new();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -183,6 +239,33 @@
         }
     }
 
+    private async Task ConfirmContractorWorkAsync()
+    {
+        if (_tenant is null || _issue is null)
+        {
+            _actionError = "Your session could not be verified. Sign in again before confirming.";
+            return;
+        }
+
+        await SaveActionAsync(() => IssueService.VerifyContractorWorkAsync(_tenant, _issue.Id));
+    }
+
+    private async Task SubmitReopenAsync()
+    {
+        if (_tenant is null || _issue is null)
+        {
+            _actionError = "Your session could not be verified. Sign in again before reopening.";
+            return;
+        }
+
+        await SaveActionAsync(() => IssueService.ReopenContractorWorkAsync(_tenant, _issue.Id, _reopenForm.Note));
+        if (_actionError is null)
+        {
+            _showReopenForm = false;
+            _reopenForm.Note = string.Empty;
+        }
+    }
+
     private async Task SaveActionAsync(Func<Task<Issue?>> action)
     {
         if (_isSaving)
@@ -248,6 +331,18 @@
         return Path.GetFileName(path);
     }
 
+    private static string GetContractorStatusLabel(ContractorStatus status) => status switch
+    {
+        ContractorStatus.Reported => "Reported",
+        ContractorStatus.OpenForContractors => "Open for contractors",
+        ContractorStatus.PendingApproval => "Pending approval",
+        ContractorStatus.Approved => "Approved",
+        ContractorStatus.InProgress => "In progress",
+        ContractorStatus.WorkDone => "Work done",
+        ContractorStatus.Completed => "Completed",
+        _ => throw new ArgumentOutOfRangeException(nameof(status))
+    };
+
     private sealed class CommentForm
     {
         [Required(ErrorMessage = "Write a comment before posting.")]
@@ -260,5 +355,12 @@
         [Required(ErrorMessage = "Explain what still needs attention.")]
         [StringLength(2000, MinimumLength = 5, ErrorMessage = "Please provide at least 5 characters.")]
         public string Reason { get; set; } = string.Empty;
+    }
+
+    private sealed class ReopenForm
+    {
+        [Required(ErrorMessage = "Explain what still needs attention.")]
+        [StringLength(500, MinimumLength = 3, ErrorMessage = "Enter a short note between 3 and 500 characters.")]
+        public string Note { get; set; } = string.Empty;
     }
 }

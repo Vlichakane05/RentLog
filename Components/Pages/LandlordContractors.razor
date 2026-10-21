@@ -1,0 +1,240 @@
+@page "/landlord/contractors"
+@layout LandlordLayout
+@inject IAuthService AuthService
+@inject ILandlordContractorManagementService ContractorManagement
+@inject IJSRuntime JavaScript
+@inject ILogger<LandlordContractors> Logger
+@inject NavigationManager Navigation
+
+<PageTitle>Trusted contractors | Rent Log</PageTitle>
+
+<main class="landlord-page contractor-management">
+    <header class="page-heading">
+        <p class="eyebrow">YOUR NETWORK</p>
+        <h1>Trusted contractors</h1>
+        <p class="text-secondary">Manage who can access contractor jobs for your properties.</p>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(_message))
+    {
+        <div class="alert @(_isError ? "alert-danger" : "alert-success")" role="@(_isError ? "alert" : "status")">@_message</div>
+    }
+
+    <section class="card contractor-invite-panel" aria-labelledby="invite-contractor-title">
+        <div>
+            <h2 id="invite-contractor-title">Invite a contractor</h2>
+            <p class="text-secondary">Create a single-use invite link. Contractors can join with a new or existing account.</p>
+        </div>
+        <button type="button" class="btn btn-primary" @onclick="CreateInviteAsync" disabled="@_isSaving">
+            @(_isSaving ? "Creating invite..." : "Invite contractor")
+        </button>
+        @if (_inviteUrl is not null)
+        {
+            <div class="contractor-invite-link">
+                <label class="form-label" for="contractor-invite-url">Contractor invite link</label>
+                <input id="contractor-invite-url" class="input" value="@_inviteUrl" readonly />
+                <button type="button" class="btn btn-secondary" @onclick="CopyInviteAsync">Copy link</button>
+                <small class="text-secondary">Expires @_inviteExpiresAt?.ToLocalTime().ToString("g").</small>
+            </div>
+        }
+    </section>
+
+    <section aria-labelledby="contractor-list-title">
+        <div class="section-heading">
+            <div>
+                <h2 id="contractor-list-title">Linked contractors</h2>
+                <p class="text-secondary">Deactivating a contractor revokes access to your jobs and media without affecting other landlords.</p>
+            </div>
+        </div>
+
+        @if (_isLoading)
+        {
+            <p role="status" class="text-secondary">Loading your contractors...</p>
+            <LoadingSkeleton ShowCard="true" />
+        }
+        else if (_loadError is not null)
+        {
+            <div class="alert alert-danger" role="alert">@_loadError</div>
+        }
+        else if (_contractors.Count == 0)
+        {
+            <EmptyState Icon="🛠️" Title="No contractors linked" Message="Invite a trusted contractor to add them to your network." />
+        }
+        else
+        {
+            <div class="trusted-contractor-list">
+                @foreach (var contractor in _contractors)
+                {
+                    <article class="card trusted-contractor-card" @key="contractor.Id">
+                        <div class="trusted-contractor-heading">
+                            <div>
+                                <h3>@contractor.DisplayName</h3>
+                                @if (!string.IsNullOrWhiteSpace(contractor.ServiceArea))
+                                {
+                                    <p class="text-secondary">@contractor.ServiceArea</p>
+                                }
+                            </div>
+                            <label class="contractor-active-toggle">
+                                <input type="checkbox"
+                                       checked="@contractor.Active"
+                                       disabled="@_isSaving"
+                                       aria-label="Active access for @contractor.DisplayName"
+                                       @onchange="args => SetContractorActiveAsync(contractor, args.Value is bool active && active)" />
+                                <span>@(contractor.Active ? "Active" : "Inactive")</span>
+                            </label>
+                        </div>
+                        <div>
+                            <span class="form-label">Trades</span>
+                            <ul class="contractor-trades">
+                                @foreach (var trade in contractor.Trades)
+                                {
+                                    <li @key="trade">@trade</li>
+                                }
+                                @if (contractor.Trades.Count == 0)
+                                {
+                                    <li>No trades listed</li>
+                                }
+                            </ul>
+                        </div>
+                        <small class="text-secondary">Linked @FormatDate(contractor.DateAdded).</small>
+                        <button type="button"
+                                class="btn btn-secondary remove-contractor-button"
+                                @onclick="() => RemoveContractorAsync(contractor)"
+                                disabled="@_isSaving">
+                            Remove from my contractors
+                        </button>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+</main>
+
+@code {
+    private AuthUser? _landlord;
+    private List<ContractorAccount> _contractors = [];
+    private string? _inviteUrl;
+    private DateTime? _inviteExpiresAt;
+    private string? _message;
+    private string? _loadError;
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _isError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _landlord = await AuthService.GetCurrentUserAsync();
+            if (_landlord?.Role != UserRole.Landlord)
+            {
+                Navigation.NavigateTo("/login", replace: true);
+                return;
+            }
+
+            _contractors = (await ContractorManagement.GetLandlordContractorsAsync(_landlord)).ToList();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load landlord contractors.");
+            _loadError = "We couldn't load your contractors. Please try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task CreateInviteAsync()
+    {
+        await RunActionAsync(async () =>
+        {
+            var invite = await ContractorManagement.CreateContractorInviteAsync(_landlord!);
+            _inviteUrl = Navigation.ToAbsoluteUri($"/contractor/join?token={Uri.EscapeDataString(invite.Token)}").ToString();
+            _inviteExpiresAt = invite.ExpiresAt;
+            _message = "Contractor invite created. Share the link with the contractor.";
+        });
+    }
+
+    private async Task CopyInviteAsync()
+    {
+        if (_inviteUrl is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await JavaScript.InvokeVoidAsync("navigator.clipboard.writeText", _inviteUrl);
+            _isError = false;
+            _message = "Contractor invite link copied.";
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Could not copy a contractor invite link.");
+            _isError = true;
+            _message = "We couldn't copy the invite link. Select and copy it from the text field.";
+        }
+    }
+
+    private async Task SetContractorActiveAsync(ContractorAccount contractor, bool active)
+    {
+        if (contractor.Active == active)
+        {
+            return;
+        }
+
+        await RunActionAsync(async () =>
+        {
+            await ContractorManagement.SetLandlordContractorActiveAsync(_landlord!, contractor.Id, active);
+            contractor.Active = active;
+            _message = active
+                ? $"{contractor.DisplayName} can now access your released jobs."
+                : $"{contractor.DisplayName}'s access to your jobs has ended.";
+        });
+    }
+
+    private async Task RemoveContractorAsync(ContractorAccount contractor)
+    {
+        var confirmed = await JavaScript.InvokeAsync<bool>(
+            "confirm",
+            $"Remove {contractor.DisplayName} from your contractors? This ends their access to your jobs.");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        await RunActionAsync(async () =>
+        {
+            await ContractorManagement.RemoveContractorAsync(_landlord!, contractor.Id);
+            _contractors.Remove(contractor);
+            _message = $"{contractor.DisplayName} was removed from your contractors.";
+        });
+    }
+
+    private async Task RunActionAsync(Func<Task> action)
+    {
+        _isSaving = true;
+        _isError = false;
+        _message = null;
+        try
+        {
+            await action();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Landlord contractor management action failed.");
+            _isError = true;
+            _message = exception is InvalidOperationException or ArgumentException
+                ? exception.Message
+                : "We couldn't complete that action. Check your connection and try again.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private static string FormatDate(DateTime dateAdded) =>
+        dateAdded.ToLocalTime().ToString("d", CultureInfo.CurrentCulture);
+}

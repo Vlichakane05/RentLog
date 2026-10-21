@@ -1,0 +1,377 @@
+@page "/contractor"
+@inject IAuthService AuthService
+@inject IContractorService ContractorService
+@inject ILogger<ContractorDashboard> Logger
+@inject NavigationManager Navigation
+
+<PageTitle>Contractor workspace | Rent Log</PageTitle>
+
+<main class="contractor-dashboard">
+    @if (_isLoading)
+    {
+        <p role="status" class="route-status">Loading your jobs...</p>
+    }
+    else if (_errorMessage is not null)
+    {
+        <div class="alert alert-danger" role="alert">@_errorMessage</div>
+    }
+    else
+    {
+        <header class="dashboard-heading">
+            <div>
+                <p class="eyebrow">CONTRACTOR WORKSPACE</p>
+                <h1>Good day, @_profile.DisplayName</h1>
+                <p class="text-secondary">Browse jobs shared by your active landlord connections or manage your accepted work.</p>
+            </div>
+            <button type="button" class="btn btn-secondary" @onclick="() => _showProfile = !_showProfile">
+                @(_showProfile ? "Close profile" : "Edit profile")
+            </button>
+        </header>
+
+        @if (!string.IsNullOrWhiteSpace(_actionMessage))
+        {
+            <div class="alert @(_actionFailed ? "alert-danger" : "alert-success")" role="@(_actionFailed ? "alert" : "status")">@_actionMessage</div>
+        }
+
+        @if (_showProfile)
+        {
+            <section class="card contractor-profile" aria-labelledby="profile-heading">
+                <h2 id="profile-heading">Contractor profile</h2>
+                <p class="text-secondary">Your name is shared with landlords. Update the trades and service area landlords use to find your services.</p>
+                <div class="form-field">
+                    <label class="form-label" for="service-area">Service area</label>
+                    <InputText id="service-area" class="input" maxlength="200" @bind-Value="_profile.ServiceArea" disabled="@_isSubmitting" />
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="contractor-trades">Trades</label>
+                    <InputText id="contractor-trades" class="input" @bind-Value="_tradeInput" disabled="@_isSubmitting" />
+                    <small class="text-secondary">Separate trades with commas.</small>
+                </div>
+                <button type="button" class="btn btn-primary" @onclick="SaveProfileAsync" disabled="@_isSubmitting">Save profile</button>
+            </section>
+        }
+
+        <section class="card contractor-job-section" aria-labelledby="available-jobs-heading">
+            <div class="section-heading">
+                <div>
+                    <h2 id="available-jobs-heading">Job board</h2>
+                    <p class="text-secondary">Jobs available to your active landlord connections and matching trades.</p>
+                </div>
+                <div class="form-field landlord-filter">
+                    <label class="form-label" for="landlord-filter">Landlord</label>
+                    <select id="landlord-filter" class="input" @bind="_selectedLandlordId">
+                        <option value="">All landlords</option>
+                        @foreach (var landlord in AvailableLandlords)
+                        {
+                            <option value="@landlord.Id">@landlord.Label</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            @if (FilteredAvailableJobs.Count == 0)
+            {
+                <p class="text-secondary">No matching jobs are available for this landlord filter.</p>
+            }
+            else
+            {
+                <div class="contractor-job-list">
+                    @foreach (var job in FilteredAvailableJobs)
+                    {
+                        <article class="contractor-job-card @(job.Severity == Severity.Emergency ? "emergency-job" : string.Empty)" @key="job.IssueId">
+                            <div class="contractor-job-heading">
+                                <div>
+                                    @if (job.Severity == Severity.Emergency)
+                                    {
+                                        <span class="emergency-badge">EMERGENCY</span>
+                                    }
+                                    <h3>@job.Title</h3>
+                                </div>
+                                <SeverityBadge Severity="@job.Severity" />
+                            </div>
+                            <p class="job-label">@(!string.IsNullOrWhiteSpace(job.PropertyName) ? job.PropertyName : job.LandlordLabel)</p>
+                            <p>@job.Description</p>
+                            <p class="job-meta">
+                                <span>@job.Category</span>
+                                @if (!string.IsNullOrWhiteSpace(job.Suburb))
+                                {
+                                    <span>@job.Suburb</span>
+                                }
+                            </p>
+                            <a class="btn btn-secondary" href="@($"/contractor/jobs/{job.IssueId}")">View job</a>
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+
+        <section class="card contractor-job-section" aria-labelledby="my-jobs-heading">
+            <h2 id="my-jobs-heading">My jobs</h2>
+            <div class="job-tabs" role="tablist" aria-label="My job status">
+                @foreach (var tab in JobTabs)
+                {
+                    <button type="button"
+                            class="job-tab @(_selectedJobTab == tab.Key ? "active" : string.Empty)"
+                            role="tab"
+                            aria-selected="@(_selectedJobTab == tab.Key)"
+                            @onclick="() => _selectedJobTab = tab.Key">
+                        @tab.Label <span>@JobsForTab(tab.Key).Count</span>
+                    </button>
+                }
+            </div>
+            @if (JobsForTab(_selectedJobTab).Count == 0)
+            {
+                <p class="text-secondary">@EmptyMessage(_selectedJobTab)</p>
+            }
+            else
+            {
+                <div class="contractor-job-list">
+                    @foreach (var job in JobsForTab(_selectedJobTab))
+                    {
+                        <article class="contractor-job-card" @key="job.IssueId">
+                            <div class="contractor-job-heading">
+                                <h3>@job.Title</h3>
+                                <span class="status-badge">@DisplayStatus(job.ContractorStatus)</span>
+                            </div>
+                            <p>@job.Description</p>
+                            <p class="job-meta"><span>@job.Category</span><span>@job.Severity</span></p>
+                            @if (IsApprovedJob(job))
+                            {
+                                <p class="approved-location">
+                                    @job.PropertyAddress
+                                    @if (!string.IsNullOrWhiteSpace(job.UnitNumber))
+                                    {
+                                        <span> · Unit @job.UnitNumber</span>
+                                    }
+                                </p>
+                                @if (job.PreferredWindows.Count > 0)
+                                {
+                                    <p class="text-secondary">Tenant preferred time windows: @string.Join(", ", job.PreferredWindows)</p>
+                                }
+                            }
+                            @if (!string.IsNullOrWhiteSpace(job.ReopenNote))
+                            {
+                                <p class="reopen-note"><strong>Tenant reopened this job:</strong> @job.ReopenNote</p>
+                            }
+                            <div class="contractor-job-actions">
+                                <a class="btn btn-secondary" href="@($"/contractor/jobs/{job.IssueId}")">Open job</a>
+                                @if (job.ContractorStatus == ContractorStatus.Approved)
+                                {
+                                    <button type="button" class="btn btn-primary" @onclick="() => SetWorkStatusAsync(job.IssueId, ContractorStatus.InProgress)" disabled="@_isSubmitting">Start work</button>
+                                }
+                                @if (job.ContractorStatus == ContractorStatus.InProgress)
+                                {
+                                    <button type="button" class="btn btn-primary" @onclick="() => SetWorkStatusAsync(job.IssueId, ContractorStatus.WorkDone)" disabled="@_isSubmitting">Mark work done</button>
+                                }
+                                @if (job.ContractorStatus == ContractorStatus.PendingApproval)
+                                {
+                                    <button type="button" class="btn btn-secondary" @onclick="() => WithdrawAsync(job.IssueId)" disabled="@_isSubmitting">Withdraw</button>
+                                }
+                                @if (job.ContractorStatus == ContractorStatus.WorkDone)
+                                {
+                                    <span class="text-secondary">Waiting for tenant verification.</span>
+                                }
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+    }
+</main>
+
+@code {
+    private static readonly (string Key, string Label)[] JobTabs =
+    [
+        ("pending", "Pending approval"),
+        ("approved", "Approved"),
+        ("in-progress", "In progress"),
+        ("completed", "Completed")
+    ];
+
+    [SupplyParameterFromQuery(Name = "jobTaken")]
+    public bool JobTaken { get; set; }
+
+    private AuthUser? _contractor;
+    private ContractorAccount _profile = new();
+    private IReadOnlyList<ContractorJob> _availableJobs = [];
+    private IReadOnlyList<ContractorJob> _myJobs = [];
+    private string _selectedLandlordId = string.Empty;
+    private string _selectedJobTab = "pending";
+    private string _tradeInput = string.Empty;
+    private string? _errorMessage;
+    private string? _actionMessage;
+    private bool _isLoading = true;
+    private bool _isSubmitting;
+    private bool _actionFailed;
+    private bool _showProfile;
+
+    private IReadOnlyList<(string Id, string Label)> AvailableLandlords => _availableJobs
+        .GroupBy(job => job.LandlordId)
+        .Select(group => (Id: group.Key, Label: group.First().LandlordLabel))
+        .OrderBy(item => item.Label, StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    private IReadOnlyList<ContractorJob> FilteredAvailableJobs => _availableJobs
+        .Where(job => string.IsNullOrEmpty(_selectedLandlordId) || job.LandlordId == _selectedLandlordId)
+        .OrderByDescending(job => job.Severity == Severity.Emergency)
+        .ThenByDescending(job => job.Severity)
+        .ThenByDescending(job => job.CreatedAt)
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _contractor = await AuthService.GetCurrentUserAsync();
+            if (_contractor?.Role != UserRole.Contractor)
+            {
+                Navigation.NavigateTo("/login", replace: true);
+                return;
+            }
+
+            _profile = await ContractorService.GetContractorProfileAsync(_contractor);
+            _tradeInput = string.Join(", ", _profile.Trades);
+            await LoadJobsAsync();
+            if (JobTaken)
+            {
+                _actionMessage = "Job already taken. Your available jobs have been refreshed.";
+                _actionFailed = true;
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to load contractor workspace.");
+            _errorMessage = "We couldn't load your jobs. Please refresh and try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadJobsAsync()
+    {
+        _availableJobs = await ContractorService.GetAvailableJobsAsync(_contractor!);
+        _myJobs = await ContractorService.GetMyJobsAsync(_contractor!);
+    }
+
+    private IReadOnlyList<ContractorJob> JobsForTab(string tab) => tab switch
+    {
+        "pending" => _myJobs.Where(job => job.ContractorStatus == ContractorStatus.PendingApproval).ToList(),
+        "approved" => _myJobs.Where(job => job.ContractorStatus == ContractorStatus.Approved).ToList(),
+        "in-progress" => _myJobs.Where(job => job.ContractorStatus == ContractorStatus.InProgress).ToList(),
+        "completed" => _myJobs.Where(job => job.ContractorStatus is ContractorStatus.WorkDone or ContractorStatus.Completed).ToList(),
+        _ => []
+    };
+
+    private async Task AcceptAsync(string issueId)
+    {
+        try
+        {
+            await ContractorService.AcceptJobAsync(_contractor!, issueId);
+            _actionMessage = "Job accepted and waiting for landlord approval.";
+            _actionFailed = false;
+            await LoadJobsAsync();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Contractor could not accept job {IssueId}.", issueId);
+            if (exception.Message.Contains("already taken", StringComparison.OrdinalIgnoreCase))
+            {
+                Navigation.NavigateTo("/contractor?jobTaken=true");
+                return;
+            }
+
+            _actionMessage = "We couldn't accept this job. Refresh the board and try again.";
+            _actionFailed = true;
+        }
+    }
+
+    private Task WithdrawAsync(string issueId) =>
+        RunActionAsync(() => ContractorService.WithdrawJobAsync(_contractor!, issueId),
+            "You withdrew from the job. It is open for other contractors.");
+
+    private Task SetWorkStatusAsync(string issueId, ContractorStatus status) =>
+        RunActionAsync(() => ContractorService.SetWorkStatusAsync(_contractor!, issueId, status),
+            status == ContractorStatus.WorkDone
+                ? "The landlord and tenant have been notified that work is done."
+                : "Work marked in progress.");
+
+    private async Task RunActionAsync(Func<Task> action, string successMessage)
+    {
+        _isSubmitting = true;
+        _actionMessage = null;
+        try
+        {
+            await action();
+            _actionMessage = successMessage;
+            _actionFailed = false;
+            await LoadJobsAsync();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Contractor job action failed.");
+            _actionMessage = "We couldn't update this job. Refresh the page and try again.";
+            _actionFailed = true;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task SaveProfileAsync()
+    {
+        _profile.Trades = _tradeInput.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (_contractor is null || _profile.Trades.Count == 0)
+        {
+            _actionMessage = "Choose at least one trade before saving your profile.";
+            _actionFailed = true;
+            return;
+        }
+
+        _isSubmitting = true;
+        _actionMessage = null;
+        try
+        {
+            await ContractorService.UpdateContractorProfileAsync(_contractor, _profile.ServiceArea, _profile.Trades);
+            _actionMessage = "Your contractor profile was updated.";
+            _actionFailed = false;
+            _showProfile = false;
+            await LoadJobsAsync();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to update contractor profile.");
+            _actionMessage = "Your profile couldn't be saved. Please try again.";
+            _actionFailed = true;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private static bool IsApprovedJob(ContractorJob job) =>
+        job.ContractorStatus is ContractorStatus.Approved or ContractorStatus.InProgress or
+            ContractorStatus.WorkDone or ContractorStatus.Completed;
+
+    private static string DisplayStatus(ContractorStatus status) => status switch
+    {
+        ContractorStatus.PendingApproval => "Pending approval",
+        ContractorStatus.OpenForContractors => "Open for contractors",
+        ContractorStatus.InProgress => "In progress",
+        ContractorStatus.WorkDone => "Work done",
+        _ => status.ToString()
+    };
+
+    private static string EmptyMessage(string tab) => tab switch
+    {
+        "pending" => "No jobs are waiting for landlord approval.",
+        "approved" => "No approved jobs yet.",
+        "in-progress" => "No jobs are currently in progress.",
+        _ => "No completed or tenant-confirmed jobs yet."
+    };
+}
