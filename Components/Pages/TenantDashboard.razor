@@ -9,29 +9,7 @@
 <PageTitle>Tenant Portal - RentLog</PageTitle>
 
 <div class="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16">
-    <!-- Top Navigation / Header -->
-    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-20">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="h-9 w-9 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                    </svg>
-                </div>
-                <div>
-                    <h1 class="text-base font-bold text-white leading-none">Tenant Portal</h1>
-                    <span class="text-xs text-indigo-400">@(_activeUnit != null ? $"{_activeUnit.BuildingName} &bull; {_activeUnit.UnitNumber}" : "Waiting for a building assignment")</span>
-                </div>
-            </div>
-
-            <div class="flex items-center space-x-3">
-                <span class="hidden md:inline-block text-xs text-slate-400">Signed in as <strong class="text-slate-200">@(_currentUser?.Name ?? "Tenant")</strong></span>
-                <a href="/login" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors">
-                    Sign Out
-                </a>
-            </div>
-        </div>
-    </header>
+    
 
     @if (_isLoading)
     {
@@ -406,6 +384,28 @@
                                         @wo.Description
                                     </p>
 
+                                    <!-- Attached Pictures -->
+                                    @{
+                                        var attachedMedia = _workOrderProofMedia.Where(p => p.WorkOrderId == wo.Id).ToList();
+                                    }
+                                    @if (attachedMedia.Any())
+                                    {
+                                        <div class="space-y-1.5 pt-1">
+                                            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Attached Photos (@attachedMedia.Count)</span>
+                                            <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                                                @foreach (var media in attachedMedia)
+                                                {
+                                                    <div class="relative rounded-lg overflow-hidden border border-slate-800 aspect-video bg-slate-950/80 group">
+                                                        <img src="@media.MediaUrl" alt="@media.ProofType" class="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                                        <span class="absolute bottom-1 left-1 bg-black/70 px-1.5 py-0.5 rounded text-[9px] text-slate-300 font-mono">
+                                                            @media.ProofType.Replace("_", " ")
+                                                        </span>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+
                                     <!-- Contractor Assignment Info -->
                                     <div class="pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
                                         <div class="flex items-center space-x-2">
@@ -567,6 +567,12 @@
                     <h3 class="text-base font-bold text-white">Log Maintenance Request</h3>
                     <button type="button" @onclick="@(() => _showWorkOrderModal = false)" class="text-slate-400 hover:text-white">&times;</button>
                 </div>
+                @if (!string.IsNullOrWhiteSpace(_workOrderSubmitError))
+                {
+                    <div class="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
+                        @_workOrderSubmitError
+                    </div>
+                }
                 <EditForm Model="@_workOrderModel" OnValidSubmit="HandleCreateWorkOrderAsync" class="space-y-4 text-xs">
                     <DataAnnotationsValidator />
                     <div class="grid grid-cols-2 gap-3">
@@ -601,9 +607,75 @@
                         <InputTextArea @bind-Value="_workOrderModel.Description" rows="4" placeholder="Describe the problem, location inside unit, and any access instructions..." class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white" />
                         <ValidationMessage For="@(() => _workOrderModel.Description)" class="text-rose-400" />
                     </div>
+
+                    <!-- Work Order Pictures / Evidence -->
+                    <div class="space-y-2 pt-2 border-t border-slate-800">
+                        <label class="block text-slate-300 font-semibold">Pictures & Photos <span class="text-slate-400 font-normal">(Optional)</span></label>
+                        <p class="text-[11px] text-slate-400 leading-normal">
+                            Upload photos or paste picture URLs of the issue to help the landlord and contractors diagnose the problem faster.
+                        </p>
+
+                        <!-- Direct file picker: Camera/Photos (PNG, JPG, HEIC, WebP) -->
+                        <div class="mt-2">
+                            <label class="flex flex-col items-center justify-center p-4 rounded-xl border border-dashed border-slate-700 bg-slate-800/50 hover:bg-slate-800/80 cursor-pointer transition-colors text-center">
+                                <svg class="w-8 h-8 text-indigo-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <span class="text-xs font-semibold text-slate-200">Tap or click to select photos</span>
+                                <span class="text-[10px] text-slate-400 mt-0.5">JPG, PNG, HEIC, WebP up to 10MB each</span>
+                                <InputFile OnChange="OnWorkOrderFilesSelected" multiple accept="image/*" class="hidden" />
+                            </label>
+                        </div>
+
+                        <!-- Option B: Quick image URL input fallback -->
+                        <div class="mt-2 flex items-center gap-2">
+                            <input type="url" @bind="_manualPhotoUrl" placeholder="Or paste image URL (https://...)" class="flex-1 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs" />
+                            <button type="button" @onclick="AddManualPhotoUrl" class="px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold">
+                                Add
+                            </button>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(_photoUploadError))
+                        {
+                            <p class="text-rose-400 text-[11px]">@_photoUploadError</p>
+                        }
+
+                        @if (_workOrderUploadedUrls.Count > 0)
+                        {
+                            <div class="mt-2 space-y-1">
+                                <span class="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                    @_workOrderUploadedUrls.Count picture(s) attached
+                                </span>
+                                <div class="grid grid-cols-4 gap-2 pt-1">
+                                    @foreach (var url in _workOrderUploadedUrls)
+                                    {
+                                        <div class="relative group rounded-lg overflow-hidden border border-slate-700 aspect-square bg-slate-950">
+                                            <img src="@url" alt="Attached photo" class="w-full h-full object-cover" />
+                                            <button type="button" @onclick="@(() => RemoveWorkOrderPhoto(url))"
+                                                    class="absolute top-1 right-1 bg-rose-600/80 hover:bg-rose-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]"
+                                                    title="Remove picture">✕</button>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+
                     <div class="pt-4 flex justify-end space-x-2">
-                        <button type="button" @onclick="@(() => _showWorkOrderModal = false)" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300">Cancel</button>
-                        <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold">Submit Request</button>
+                        <button type="button" @onclick="@(() => _showWorkOrderModal = false)" disabled="@_isSubmittingWorkOrder" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 disabled:opacity-50">Cancel</button>
+                        <button type="submit" disabled="@_isSubmittingWorkOrder" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold flex items-center space-x-1.5">
+                            @if (_isSubmittingWorkOrder)
+                            {
+                                <span class="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full mr-1"></span>
+                                <span>Submitting...</span>
+                            }
+                            else
+                            {
+                                <span>Submit Request</span>
+                            }
+                        </button>
                     </div>
                 </EditForm>
             </div>
@@ -641,6 +713,12 @@
 
     private bool _showWorkOrderModal;
     private CreateWorkOrderViewModel _workOrderModel = new();
+    private List<string> _workOrderUploadedUrls = new();
+    private string _manualPhotoUrl = string.Empty;
+    private string? _photoUploadError;
+    private string? _workOrderSubmitError;
+    private bool _isSubmittingWorkOrder;
+    private List<JobProofMediaEntity> _workOrderProofMedia = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -688,6 +766,13 @@
 
                 _utilityTokens = (await PropertyService.GetUtilityTokensForTenantAsync(tenantId)).ToList();
                 _workOrders = (await PropertyService.GetWorkOrdersForTenantAsync(tenantId)).ToList();
+
+                _workOrderProofMedia.Clear();
+                foreach (var wo in _workOrders)
+                {
+                    var media = await PropertyService.GetProofMediaForWorkOrderAsync(wo.Id);
+                    _workOrderProofMedia.AddRange(media);
+                }
             }
 
             _contractors = (await PropertyService.GetContractorProfilesAsync()).ToList();
@@ -808,28 +893,130 @@
             Category = "PLUMBING",
             Priority = "MEDIUM"
         };
+        _workOrderUploadedUrls.Clear();
+        _manualPhotoUrl = string.Empty;
+        _photoUploadError = null;
         _showWorkOrderModal = true;
+    }
+
+    private async Task OnWorkOrderFilesSelected(InputFileChangeEventArgs e)
+    {
+        _photoUploadError = null;
+        try
+        {
+            var files = e.GetMultipleFiles(5);
+            foreach (var file in files)
+            {
+                if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+                {
+                    _photoUploadError = "Please select valid image files (JPG, PNG, HEIC, WebP).";
+                    continue;
+                }
+
+                if (file.Size > 10 * 1024 * 1024)
+                {
+                    _photoUploadError = $"File '{file.Name}' exceeds the 10MB limit.";
+                    continue;
+                }
+
+                if (_workOrderUploadedUrls.Count >= 5)
+                {
+                    _photoUploadError = "Maximum 5 photos allowed per request.";
+                    break;
+                }
+
+                // Read and encode image to data URL for immediate preview and database storage
+                await using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+                using var memoryStream = new MemoryStream();
+                await stream.CopyToAsync(memoryStream);
+                var base64 = Convert.ToBase64String(memoryStream.ToArray());
+                var dataUrl = $"data:{file.ContentType};base64,{base64}";
+
+                if (!_workOrderUploadedUrls.Contains(dataUrl))
+                {
+                    _workOrderUploadedUrls.Add(dataUrl);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _photoUploadError = $"Could not process selected image: {ex.Message}";
+        }
+    }
+
+    private void AddManualPhotoUrl()
+    {
+        if (!string.IsNullOrWhiteSpace(_manualPhotoUrl) && !_workOrderUploadedUrls.Contains(_manualPhotoUrl.Trim()))
+        {
+            _workOrderUploadedUrls.Add(_manualPhotoUrl.Trim());
+            _manualPhotoUrl = string.Empty;
+        }
+    }
+
+    private void RemoveWorkOrderPhoto(string url)
+    {
+        _workOrderUploadedUrls.Remove(url);
     }
 
     private async Task HandleCreateWorkOrderAsync()
     {
-        var tenantId = _currentUser != null && Guid.TryParse(_currentUser.Id, out var id) ? id : MockPropertyManagementService.DemoTenantId;
-        var wo = new WorkOrderEntity
+        _isSubmittingWorkOrder = true;
+        _workOrderSubmitError = null;
+        try
         {
-            UnitId = _activeUnit?.Id ?? Guid.Empty,
-            LoggedById = tenantId,
-            Category = _workOrderModel.Category,
-            Priority = _workOrderModel.Priority,
-            Status = "LOGGED",
-            Title = _workOrderModel.Title,
-            Description = _workOrderModel.Description,
-            ScheduledAccessTime = _workOrderModel.ScheduledAccessTime,
-            CreatedAt = DateTime.UtcNow
-        };
-        await PropertyService.CreateWorkOrderAsync(wo);
-        _showWorkOrderModal = false;
-        await LoadTenantDataAsync();
-        _activeTab = "WORK_ORDERS";
+            var tenantId = _currentUser != null && Guid.TryParse(_currentUser.Id, out var id) ? id : MockPropertyManagementService.DemoTenantId;
+            var wo = new WorkOrderEntity
+            {
+                UnitId = _activeUnit?.Id ?? Guid.Empty,
+                LoggedById = tenantId,
+                Category = _workOrderModel.Category,
+                Priority = _workOrderModel.Priority,
+                Status = "LOGGED",
+                Title = _workOrderModel.Title,
+                Description = _workOrderModel.Description,
+                ScheduledAccessTime = _workOrderModel.ScheduledAccessTime,
+                CreatedAt = DateTime.UtcNow
+            };
+            var created = await PropertyService.CreateWorkOrderAsync(wo);
+
+            // Upload any attached pictures as initial BEFORE_PHOTO proof media
+            foreach (var url in _workOrderUploadedUrls)
+            {
+                try
+                {
+                    var media = new JobProofMediaEntity
+                    {
+                        WorkOrderId = created.Id,
+                        UploadedById = tenantId,
+                        ProofType = "BEFORE_PHOTO",
+                        MediaUrl = url,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await PropertyService.UploadProofMediaAsync(media);
+                }
+                catch (Exception mediaEx)
+                {
+                    // If RLS blocks photo insert, capture message and don't crash circuit
+                    _workOrderSubmitError = $"Work order was created, but some pictures couldn't be saved: {mediaEx.Message}";
+                }
+            }
+
+            if (_workOrderSubmitError is null)
+            {
+                _showWorkOrderModal = false;
+                _workOrderUploadedUrls.Clear();
+            }
+            await LoadTenantDataAsync();
+            _activeTab = "WORK_ORDERS";
+        }
+        catch (Exception ex)
+        {
+            _workOrderSubmitError = $"Failed to create work order: {ex.Message}";
+        }
+        finally
+        {
+            _isSubmittingWorkOrder = false;
+        }
     }
 
     private async Task SignInspectionAsync(Guid inspectionId)
@@ -863,9 +1050,12 @@
 
     private string GetStatusBadgeClass(string status) => status.ToUpperInvariant() switch
     {
-        "COMPLETED" => "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30",
+        "RESOLVED" or "COMPLETED" => "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30",
         "IN_PROGRESS" => "bg-blue-500/20 text-blue-400 border border-blue-500/30",
-        "SCHEDULED" => "bg-purple-500/20 text-purple-400 border border-purple-500/30",
+        "CONTRACTOR_ASSIGNED" or "SCHEDULED" => "bg-purple-500/20 text-purple-400 border border-purple-500/30",
+        "APPROVED" or "ACKNOWLEDGED" => "bg-amber-500/20 text-amber-400 border border-amber-500/30",
+        "REJECTED" => "bg-rose-500/20 text-rose-400 border border-rose-500/30",
         _ => "bg-slate-800 text-slate-400 border border-slate-700"
     };
 }
+

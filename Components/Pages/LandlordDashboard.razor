@@ -5,33 +5,12 @@
 @inject IPropertyManagementService PropertyService
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
+@inject IEmailNotificationService EmailService
 
 <PageTitle>Landlord Portal - RentLog</PageTitle>
 
 <div class="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16">
-    <!-- Top Navigation / Header -->
-    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-20">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="h-9 w-9 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                </div>
-                <div>
-                    <h1 class="text-base font-bold text-white leading-none">Landlord / Owner Portal</h1>
-                    <span class="text-xs text-indigo-400">Portfolio & Financial Command</span>
-                </div>
-            </div>
-
-            <div class="flex items-center space-x-3">
-                <span class="hidden md:inline-block text-xs text-slate-400">Welcome, <strong class="text-slate-200">@(_currentUser?.Name ?? "Owner")</strong></span>
-                <a href="/login" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors">
-                    Sign Out
-                </a>
-            </div>
-        </div>
-    </header>
+    
 
     @if (_isLoading)
     {
@@ -288,7 +267,36 @@
                             <h2 class="text-base font-bold text-white">Work Order Management & Contractor Quotes</h2>
                             <p class="text-xs text-slate-400">Assign verified contractors and review labor & material quotes</p>
                         </div>
+                        <button type="button" @onclick="OpenAddContractorModal"
+                                class="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-colors flex items-center space-x-1.5 shadow">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                            <span>Add Verified Contractor</span>
+                        </button>
                     </div>
+
+                    @if (!string.IsNullOrEmpty(_dispatchNotification))
+                    {
+                        <div class="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center justify-between shadow-sm">
+                            <div class="flex items-center space-x-2.5">
+                                <span class="h-6 w-6 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                </span>
+                                <div>
+                                    <span class="font-bold">Notification Dispatched:</span> @_dispatchNotification
+                                    @if (!string.IsNullOrEmpty(_lastDispatchedLink))
+                                    {
+                                        <div class="mt-1 flex items-center space-x-2">
+                                            <span class="text-slate-400 font-mono text-[11px]">Direct Link:</span>
+                                            <a href="@_lastDispatchedLink" target="_blank" class="text-indigo-400 underline font-mono text-[11px] hover:text-indigo-300">
+                                                @_lastDispatchedLink
+                                            </a>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                            <button type="button" @onclick="@(() => _dispatchNotification = null)" class="text-slate-400 hover:text-white">&times;</button>
+                        </div>
+                    }
 
                     <div class="grid grid-cols-1 gap-4">
                         @foreach (var wo in _workOrders)
@@ -323,6 +331,28 @@
                                 </div>
 
                                 <p class="text-xs text-slate-300">@wo.Description</p>
+
+                                <!-- Attached Pictures / Evidence -->
+                                @{
+                                    var woProofMedia = _proofMedia.Where(p => p.WorkOrderId == wo.Id).ToList();
+                                }
+                                @if (woProofMedia.Any())
+                                {
+                                    <div class="space-y-1.5 pt-1">
+                                        <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Attached Photos / Evidence (@woProofMedia.Count)</span>
+                                        <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                                            @foreach (var media in woProofMedia)
+                                            {
+                                                <div class="relative rounded-lg overflow-hidden border border-slate-800 aspect-video bg-slate-950/80 group">
+                                                    <img src="@media.MediaUrl" alt="@media.ProofType" class="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                                    <span class="absolute bottom-1 left-1 bg-black/70 px-1.5 py-0.5 rounded text-[9px] text-slate-300 font-mono">
+                                                        @media.ProofType.Replace("_", " ")
+                                                    </span>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
 
                                 @if (assignedContractor != null)
                                 {
@@ -534,17 +564,34 @@
                     <div>Category: <strong class="text-indigo-400">@_selectedWorkOrder.Category</strong></div>
                 </div>
                 <div class="space-y-3">
-                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Select Verified Contractor</label>
+                    <div class="flex items-center justify-between">
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Select Verified Contractor</label>
+                        <button type="button" @onclick="OpenAddContractorModal" class="text-xs text-amber-400 hover:text-amber-300 font-semibold flex items-center space-x-1">
+                            <span>+ New Contractor</span>
+                        </button>
+                    </div>
+                    @if (!_contractors.Any())
+                    {
+                        <div class="p-4 bg-slate-800/40 rounded-xl text-center text-xs text-slate-400">
+                            No contractors found. Add one below to dispatch work.
+                        </div>
+                    }
                     @foreach (var contractor in _contractors)
                     {
                         <div class="p-3 rounded-xl border border-slate-800 hover:border-indigo-500 bg-slate-800/40 hover:bg-indigo-600/10 transition-colors flex items-center justify-between">
                             <div>
-                                <h4 class="text-xs font-bold text-white">@contractor.CompanyName</h4>
+                                <div class="flex items-center space-x-1.5">
+                                    <h4 class="text-xs font-bold text-white">@contractor.CompanyName</h4>
+                                    @if (contractor.IsVerified)
+                                    {
+                                        <span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Verified</span>
+                                    }
+                                </div>
                                 <span class="text-[11px] text-slate-400">@contractor.Trade &bull; Rating: @contractor.AverageRating ★</span>
                             </div>
                             <button type="button" @onclick="@(() => AssignContractorToWorkOrderAsync(contractor.Id))"
                                     class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-colors">
-                                Assign
+                                Assign & Dispatch Link
                             </button>
                         </div>
                     }
@@ -552,6 +599,102 @@
             </div>
         </div>
     }
+
+    <!-- MODAL: ADD VERIFIED CONTRACTOR -->
+    @if (_showAddContractorModal)
+    {
+        <div class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center space-x-2">
+                        <span class="h-8 w-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                        </span>
+                        <div>
+                            <h3 class="text-base font-bold text-white">Add Verified Contractor</h3>
+                            <p class="text-xs text-slate-400">Register profile to assign jobs & dispatch links</p>
+                        </div>
+                    </div>
+                    <button type="button" @onclick="@(() => _showAddContractorModal = false)" class="text-slate-400 hover:text-white">&times;</button>
+                </div>
+
+                @if (!string.IsNullOrEmpty(_contractorModalError))
+                {
+                    <div class="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
+                        @_contractorModalError
+                    </div>
+                }
+
+                <EditForm Model="@_contractorModel" OnValidSubmit="HandleAddContractorAsync" class="space-y-3.5 text-xs">
+                    <DataAnnotationsValidator />
+
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Company / Trading Name *</label>
+                        <InputText @bind-Value="_contractorModel.CompanyName" placeholder="e.g. Apex Plumb & Pipe Specialists" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500" />
+                        <ValidationMessage For="@(() => _contractorModel.CompanyName)" class="text-[11px] text-rose-400 mt-1" />
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-slate-300 font-semibold mb-1">Primary Trade *</label>
+                            <InputSelect @bind-Value="_contractorModel.Trade" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+                                <option value="PLUMBING">PLUMBING</option>
+                                <option value="ELECTRICAL">ELECTRICAL</option>
+                                <option value="HVAC">HVAC</option>
+                                <option value="STRUCTURAL">STRUCTURAL</option>
+                                <option value="APPLIANCE">APPLIANCE</option>
+                                <option value="GENERAL">GENERAL</option>
+                            </InputSelect>
+                        </div>
+                        <div>
+                            <label class="block text-slate-300 font-semibold mb-1">Tax / VAT Number</label>
+                            <InputText @bind-Value="_contractorModel.TaxVatNumber" placeholder="e.g. ZA-492019482" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500" />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Contact Person / Tech Name *</label>
+                        <InputText @bind-Value="_contractorModel.FullName" placeholder="e.g. Dave Miller" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500" />
+                        <ValidationMessage For="@(() => _contractorModel.FullName)" class="text-[11px] text-rose-400 mt-1" />
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-slate-300 font-semibold mb-1">Email (for job links) *</label>
+                            <InputText @bind-Value="_contractorModel.Email" placeholder="tech@company.co.za" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500" />
+                            <ValidationMessage For="@(() => _contractorModel.Email)" class="text-[11px] text-rose-400 mt-1" />
+                        </div>
+                        <div>
+                            <label class="block text-slate-300 font-semibold mb-1">Mobile / SMS Number</label>
+                            <InputText @bind-Value="_contractorModel.PhoneNumber" placeholder="e.g. +27 82 555 1234" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500" />
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-2 pt-1">
+                        <InputCheckbox id="isVerifiedCheck" @bind-Value="_contractorModel.IsVerified" class="rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-0" />
+                        <label for="isVerifiedCheck" class="text-xs text-slate-300 cursor-pointer">
+                            Mark as Verified Contractor (Compliance & Insurance Checked)
+                        </label>
+                    </div>
+
+                    <div class="pt-4 flex justify-end space-x-2">
+                        <button type="button" @onclick="@(() => _showAddContractorModal = false)" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300">Cancel</button>
+                        <button type="submit" disabled="@_isSavingContractor" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition-colors">
+                            @if (_isSavingContractor)
+                            {
+                                <span>Saving...</span>
+                            }
+                            else
+                            {
+                                <span>Save Contractor</span>
+                            }
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+
 
     @if (_showInviteModal)
     {
@@ -642,6 +785,14 @@
     private string? _inviteError;
     private string? _inviteSuccess;
     private InviteTenantViewModel _inviteModel = new();
+
+    private bool _showAddContractorModal;
+    private bool _isSavingContractor;
+    private string? _contractorModalError;
+    private AddContractorViewModel _contractorModel = new();
+
+    private string? _dispatchNotification;
+    private string? _lastDispatchedLink;
 
     protected override async Task OnInitializedAsync()
     {
@@ -787,6 +938,66 @@
         await LoadLandlordDataAsync();
     }
 
+    private void OpenAddContractorModal()
+    {
+        _contractorModalError = null;
+        _contractorModel = new AddContractorViewModel
+        {
+            CompanyName = "ProFix Master Electrical & Maintenance",
+            FullName = "Jason Vance",
+            Email = "dispatch@profixmasters.co.za",
+            PhoneNumber = "+27 83 456 7890",
+            Trade = "ELECTRICAL",
+            TaxVatNumber = "ZA-4180293812",
+            IsVerified = true
+        };
+        _showAddContractorModal = true;
+    }
+
+    private async Task HandleAddContractorAsync()
+    {
+        _contractorModalError = null;
+        _isSavingContractor = true;
+
+        try
+        {
+            var user = new UserEntity
+            {
+                Id = Guid.NewGuid(),
+                FullName = _contractorModel.FullName.Trim(),
+                Email = _contractorModel.Email.Trim().ToLowerInvariant(),
+                PhoneNumber = _contractorModel.PhoneNumber?.Trim(),
+                Role = "CONTRACTOR",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var profile = new ContractorProfileEntity
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                CompanyName = _contractorModel.CompanyName.Trim(),
+                Trade = _contractorModel.Trade,
+                TaxVatNumber = _contractorModel.TaxVatNumber?.Trim(),
+                BankAccountDetails = !string.IsNullOrWhiteSpace(_contractorModel.BankAccountDetails) ? _contractorModel.BankAccountDetails : "{}",
+                IsVerified = _contractorModel.IsVerified,
+                AverageRating = 5.0m,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await PropertyService.RegisterContractorProfileAsync(user, profile);
+            _showAddContractorModal = false;
+            await LoadLandlordDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _contractorModalError = ex.Message;
+        }
+        finally
+        {
+            _isSavingContractor = false;
+        }
+    }
+
     private void OpenAssignContractorModal(WorkOrderEntity wo)
     {
         _selectedWorkOrder = wo;
@@ -796,8 +1007,46 @@
     private async Task AssignContractorToWorkOrderAsync(Guid contractorId)
     {
         if (_selectedWorkOrder == null) return;
-        await PropertyService.AssignContractorAsync(_selectedWorkOrder.Id, contractorId);
+        var wo = await PropertyService.AssignContractorAsync(_selectedWorkOrder.Id, contractorId);
         _showAssignModal = false;
+
+        var contractor = _contractors.FirstOrDefault(c => c.Id == contractorId);
+        var contractorName = contractor?.CompanyName ?? "Contractor";
+        
+        // Build the special direct contractor portal link for this specific work order
+        // Include pin query parameter so opening the link can automatically authorize
+        var pinCode = wo.Id.ToString("N")[..4].ToUpperInvariant();
+        var directLink = $"{Navigation.BaseUri.TrimEnd('/')}/contractor/job/{wo.Id}?pin={pinCode}";
+        _lastDispatchedLink = directLink;
+
+        // Lookup contractor email and address
+        var destEmail = _usersById.TryGetValue(contractor?.UserId ?? Guid.Empty, out var u) ? u.Email : null;
+        if (string.IsNullOrWhiteSpace(destEmail) && contractor != null)
+        {
+            var userFromDb = await PropertyService.GetUserByIdAsync(contractor.UserId);
+            if (userFromDb != null) destEmail = userFromDb.Email;
+        }
+
+        var unit = _units.FirstOrDefault(un => un.Id == wo.UnitId);
+        var unitAddress = unit != null ? $"{unit.BuildingName} - Unit {unit.UnitNumber}, {unit.StreetAddress}" : "Unit property address";
+
+        bool emailSent = false;
+        if (!string.IsNullOrWhiteSpace(destEmail))
+        {
+            emailSent = await EmailService.SendContractorJobNotificationAsync(
+                destEmail,
+                contractorName,
+                wo.Title,
+                wo.Priority,
+                unitAddress,
+                directLink,
+                pinCode);
+        }
+
+        _dispatchNotification = emailSent
+            ? $"Real email dispatched to {contractorName} ({destEmail}) with PIN: {pinCode} and portal link!"
+            : $"Notification ready for {contractorName} ({destEmail ?? "Tech"}). Link: {directLink} (PIN: {pinCode})";
+
         await LoadLandlordDataAsync();
     }
 
@@ -813,3 +1062,4 @@
         await LoadLandlordDataAsync();
     }
 }
+

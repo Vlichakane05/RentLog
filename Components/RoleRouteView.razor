@@ -56,7 +56,8 @@ else
             _requiredRole = nameof(UserRole.Landlord);
         }
         else if ((path.Equals("contractor", StringComparison.OrdinalIgnoreCase) || path.StartsWith("contractor/", StringComparison.OrdinalIgnoreCase)) &&
-                 !path.Equals("contractor/login", StringComparison.OrdinalIgnoreCase))
+                 !path.Equals("contractor/login", StringComparison.OrdinalIgnoreCase) &&
+                 !path.StartsWith("contractor/job/", StringComparison.OrdinalIgnoreCase))
         {
             _requiredRole = nameof(UserRole.Contractor);
         }

@@ -812,7 +812,7 @@ public class MockPropertyManagementService : IPropertyManagementService
             if (item != null)
             {
                 item.AssignedContractorId = contractorId;
-                if (item.Status == "LOGGED") item.Status = "SCHEDULED";
+                if (item.Status == "LOGGED") item.Status = "CONTRACTOR_ASSIGNED";
                 return Task.FromResult(item);
             }
             throw new KeyNotFoundException($"Work order {workOrderId} not found.");
@@ -841,6 +841,39 @@ public class MockPropertyManagementService : IPropertyManagementService
         lock (_lock)
         {
             return Task.FromResult(_contractors.FirstOrDefault(c => c.UserId == userId));
+        }
+    }
+
+    public Task<ContractorProfileEntity> RegisterContractorProfileAsync(UserEntity user, ContractorProfileEntity profile)
+    {
+        lock (_lock)
+        {
+            if (user.Id == Guid.Empty) user.Id = Guid.NewGuid();
+            user.Role = "CONTRACTOR";
+            user.CreatedAt = DateTime.UtcNow;
+
+            var existingUser = _users.FirstOrDefault(u => u.Email.Equals(user.Email, StringComparison.OrdinalIgnoreCase));
+            if (existingUser != null)
+            {
+                user.Id = existingUser.Id;
+            }
+            else
+            {
+                _users.Add(user);
+            }
+
+            if (profile.Id == Guid.Empty) profile.Id = Guid.NewGuid();
+            profile.UserId = user.Id;
+            profile.CreatedAt = DateTime.UtcNow;
+
+            var existingProfile = _contractors.FirstOrDefault(c => c.UserId == user.Id);
+            if (existingProfile != null)
+            {
+                _contractors.Remove(existingProfile);
+            }
+            _contractors.Add(profile);
+
+            return Task.FromResult(profile);
         }
     }
 

@@ -60,6 +60,8 @@ public interface IPropertyManagementService
     Task<ContractorProfileEntity?> GetContractorProfileByIdAsync(Guid id);
     Task<ContractorProfileEntity?> GetContractorProfileByUserIdAsync(Guid userId);
     Task<ContractorProfileEntity?> VerifyContractorPinAsync(string pin);
+    Task<ContractorProfileEntity> RegisterContractorProfileAsync(UserEntity user, ContractorProfileEntity profile);
+
 
     // Quotes
     Task<IReadOnlyList<ContractorQuoteEntity>> GetQuotesForWorkOrderAsync(Guid workOrderId);
