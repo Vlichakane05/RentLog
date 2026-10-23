@@ -6,11 +6,12 @@
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
 @inject IEmailNotificationService EmailService
+@inject RentLogAuthStateProvider AuthStateProvider
 
 <PageTitle>Landlord Portal - RentLog</PageTitle>
 
 <div class="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16">
-    
+    @Header
 
     @if (_isLoading)
     {
@@ -754,8 +755,28 @@
 </div>
 
 @code {
+    RenderFragment Header => @<div class="flex items-center justify-between bg-slate-900 p-4 border-b border-slate-800">
+        <h2 class="text-xl font-bold"><span class="text-white">Rent</span><span class="text-indigo-500">Log</span></h2>
+        <div class="flex items-center space-x-4">
+            <span class="text-slate-300">@(_currentUser?.Name ?? "User")</span>
+            <button @onclick="HandleLogoutAsync" class="underline text-slate-400">Sign out</button>
+        </div>
+    </div>;
+
+
+
+    private async Task HandleLogoutAsync()
+    {
+        await AuthService.LogoutAsync();
+        await AuthStateProvider.LogoutAsync();
+        Navigation.NavigateTo("/login", replace: true);
+    }
+
+    // existing code continues below...
+
+
     private AuthUser? _currentUser;
-    private bool _isLoading = true;
+private bool _isLoading = true;
     private string _activeTab = "UNITS";
 
     private List<UnitEntity> _units = new();
