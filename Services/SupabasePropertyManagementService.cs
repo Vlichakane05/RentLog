@@ -85,6 +85,44 @@ public class SupabasePropertyManagementService : IPropertyManagementService
         return res.Models.FirstOrDefault();
     }
 
+    public async Task<ContractorProfileEntity> RegisterContractorProfileAsync(UserEntity user, ContractorProfileEntity profile)
+    {
+        var client = await GetClientAsync();
+
+        if (user.Id == Guid.Empty) user.Id = Guid.NewGuid();
+        user.Role = "CONTRACTOR";
+        user.CreatedAt = DateTime.UtcNow;
+
+        var existingUserRes = await client.From<UserEntity>()
+            .Filter("email", Operator.Equals, user.Email.Trim().ToLowerInvariant())
+            .Get();
+
+        var existingUser = existingUserRes.Models.FirstOrDefault();
+        if (existingUser != null)
+        {
+            user.Id = existingUser.Id;
+        }
+        else
+        {
+            try
+            {
+                var userInsertRes = await client.From<UserEntity>().Insert(user);
+                if (userInsertRes.Models.Any()) user.Id = userInsertRes.Models.First().Id;
+            }
+            catch
+            {
+                // In case of race or RLS, continue with assigned user.Id
+            }
+        }
+
+        if (profile.Id == Guid.Empty) profile.Id = Guid.NewGuid();
+        profile.UserId = user.Id;
+        profile.CreatedAt = DateTime.UtcNow;
+
+        var res = await client.From<ContractorProfileEntity>().Insert(profile);
+        return res.Models.FirstOrDefault() ?? profile;
+    }
+
     public async Task<ContractorProfileEntity?> VerifyContractorPinAsync(string pin)
     {
         if (string.IsNullOrWhiteSpace(pin)) return null;
@@ -416,7 +454,7 @@ public class SupabasePropertyManagementService : IPropertyManagementService
         var res = await client.From<WorkOrderEntity>()
             .Filter("id", Operator.Equals, workOrderId.ToString())
             .Set(x => x.AssignedContractorId, (Guid?)contractorId)
-            .Set(x => x.Status, "SCHEDULED")
+            .Set(x => x.Status, "CONTRACTOR_ASSIGNED")
             .Update();
         return res.Models.FirstOrDefault() ?? (await GetWorkOrderByIdAsync(workOrderId))!;
     }

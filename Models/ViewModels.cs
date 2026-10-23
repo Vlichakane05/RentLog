@@ -67,6 +67,8 @@ public class CreateWorkOrderViewModel
     public string Description { get; set; } = string.Empty;
 
     public DateTime? ScheduledAccessTime { get; set; }
+
+    public List<string> MediaUrls { get; set; } = new();
 }
 
 public class SubmitQuoteViewModel
@@ -181,3 +183,29 @@ public class CreateUnitViewModel
     [Range(0, 1000000, ErrorMessage = "Deposit cannot be negative.")]
     public decimal DepositAmount { get; set; }
 }
+
+public class AddContractorViewModel
+{
+    [Required(ErrorMessage = "Contractor or company contact name is required.")]
+    public string FullName { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Email address is required.")]
+    [EmailAddress(ErrorMessage = "Please enter a valid email address.")]
+    public string Email { get; set; } = string.Empty;
+
+    [Phone(ErrorMessage = "Please enter a valid phone number.")]
+    public string? PhoneNumber { get; set; }
+
+    [Required(ErrorMessage = "Company or trading name is required.")]
+    public string CompanyName { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Trade category is required.")]
+    public string Trade { get; set; } = "PLUMBING";
+
+    public string? TaxVatNumber { get; set; }
+
+    public string? BankAccountDetails { get; set; }
+
+    public bool IsVerified { get; set; } = true;
+}
+

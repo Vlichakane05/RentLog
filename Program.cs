@@ -14,6 +14,7 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton(new BackendMode(false, null));
+builder.Services.AddScoped<IEmailNotificationService, ResendEmailNotificationService>();
 
 // Direct live Supabase database and authentication services
 builder.Services.AddScoped(_ => new SupabaseClientProvider(supabaseUrl, supabaseAnonKey));

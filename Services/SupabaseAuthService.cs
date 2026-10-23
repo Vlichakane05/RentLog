@@ -42,8 +42,9 @@ public sealed class SupabaseAuthService : IAuthService
 
                 // If user authenticated in Auth but not yet in public.users, create or fetch
                 var userRow = await _propertyService.GetUserByEmailAsync(cleanEmail);
-                if (userRow != null && Enum.TryParse<UserRole>(userRow.Role, true, out var role))
+                if (userRow != null)
                 {
+                    var role = ParseUserRole(userRow.Role);
                     _currentUser = new AuthUser
                     {
                         Id = userRow.Id.ToString(),
@@ -114,7 +115,7 @@ public sealed class SupabaseAuthService : IAuthService
 
         await _propertyService.CreateUserAsync(newUser);
 
-        Enum.TryParse<UserRole>(cleanRole, true, out var parsedRole);
+        var parsedRole = ParseUserRole(cleanRole);
         _currentUser = new AuthUser
         {
             Id = userId.ToString(),
@@ -211,5 +212,13 @@ public sealed class SupabaseAuthService : IAuthService
         }
 
         return null;
+    }
+
+    private UserRole ParseUserRole(string roleString)
+    {
+        if (Enum.TryParse<UserRole>(roleString, true, out var role))
+            return role;
+
+        throw new ArgumentException($"Invalid user role '{roleString}'.");
     }
 }

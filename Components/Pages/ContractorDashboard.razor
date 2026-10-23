@@ -124,9 +124,9 @@
                                 <select value="@wo.Status" @onchange="@(e => UpdateWorkOrderStatusAsync(wo.Id, e.Value?.ToString() ?? "LOGGED"))"
                                         class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs font-bold text-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-500">
                                     <option value="LOGGED">LOGGED</option>
-                                    <option value="SCHEDULED">SCHEDULED</option>
+                                    <option value="CONTRACTOR_ASSIGNED">CONTRACTOR_ASSIGNED</option>
                                     <option value="IN_PROGRESS">IN_PROGRESS</option>
-                                    <option value="COMPLETED">COMPLETED</option>
+                                    <option value="RESOLVED">RESOLVED</option>
                                 </select>
                             </div>
                         </div>
