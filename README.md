@@ -51,7 +51,13 @@ The application is structured around three core user roles:
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/your-username/your-property-app.git](https://github.com/your-username/your-property-app.git)
-   cd your-property-app
+   git clone (https://github.com/Vlichakane05/RentLog.git)
+   cd RentLog
+
+   ```
+2. **Build and Run**
+   ```bash
    dotnet build
    dotnet run
+   ```
+  
