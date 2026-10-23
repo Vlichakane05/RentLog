@@ -544,7 +544,9 @@
                     </div>
                     <div class="pt-4 flex justify-end space-x-2">
                         <button type="button" @onclick="@(() => _showAddUnitModal = false)" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300">Cancel</button>
-                        <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold">Save Unit</button>
+                        <button type="submit" disabled="@_isCreatingUnit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+                            @(_isCreatingUnit ? "Saving..." : "Save Unit")
+                        </button>
                     </div>
                 </EditForm>
             </div>
@@ -802,6 +804,7 @@ private bool _isLoading = true;
 
     // Modals
     private bool _showAddUnitModal;
+    private bool _isCreatingUnit;
     private CreateUnitViewModel _unitModel = new();
 
     private bool _showAssignModal;
@@ -945,24 +948,35 @@ private bool _isLoading = true;
 
     private async Task HandleCreateUnitAsync()
     {
-        var landlordId = _currentUser != null && Guid.TryParse(_currentUser.Id, out var id)
-            ? id
-            : MockPropertyManagementService.DemoLandlordId;
+        if (_isCreatingUnit)
+            return;
 
-        var unit = new UnitEntity
+        _isCreatingUnit = true;
+        try
         {
-            LandlordId = landlordId,
-            UnitNumber = _unitModel.UnitNumber,
-            BuildingName = _unitModel.BuildingName,
-            StreetAddress = _unitModel.StreetAddress,
-            MonthlyRent = _unitModel.MonthlyRent,
-            DepositAmount = _unitModel.DepositAmount,
-            CreatedAt = DateTime.UtcNow
-        };
+            var landlordId = _currentUser != null && Guid.TryParse(_currentUser.Id, out var id)
+                ? id
+                : MockPropertyManagementService.DemoLandlordId;
 
-        await PropertyService.CreateUnitAsync(unit);
-        _showAddUnitModal = false;
-        await LoadLandlordDataAsync();
+            var unit = new UnitEntity
+            {
+                LandlordId = landlordId,
+                UnitNumber = _unitModel.UnitNumber,
+                BuildingName = _unitModel.BuildingName,
+                StreetAddress = _unitModel.StreetAddress,
+                MonthlyRent = _unitModel.MonthlyRent,
+                DepositAmount = _unitModel.DepositAmount,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await PropertyService.CreateUnitAsync(unit);
+            _showAddUnitModal = false;
+            await LoadLandlordDataAsync();
+        }
+        finally
+        {
+            _isCreatingUnit = false;
+        }
     }
 
     private void OpenAddContractorModal()
