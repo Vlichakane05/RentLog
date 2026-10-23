@@ -1,11 +1,14 @@
 .login-page {
     height: 100vh;
     height: 100dvh;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+    align-items: flex-start;
 }
 
 .login-card {
-    max-height: 100%;
+    max-height: none;
+    margin-block: auto;
     gap: clamp(0.5rem, 2vh, 1.25rem);
     padding: clamp(1rem, 2.5vh, 1.5rem);
 }
@@ -17,35 +20,4 @@
 
 .login-form {
     gap: clamp(0.5rem, 1.5vh, 1rem);
-}
-
-@media (max-height: 520px) {
-    .login-card .login-heading {
-        margin-top: 0.5rem;
-        font-size: 1.25rem;
-        line-height: 1.75rem;
-    }
-
-    .login-card .login-subtitle {
-        display: none;
-    }
-
-    .login-card .login-form {
-        gap: 0.75rem;
-    }
-
-    .login-card .login-links {
-        padding-top: 0.75rem;
-    }
-}
-
-@media (max-height: 400px) {
-    .login-card .login-logo {
-        width: 2.5rem;
-        height: 2.5rem;
-    }
-
-    .login-card .login-links {
-        padding-top: 0.5rem;
-    }
 }
