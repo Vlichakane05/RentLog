@@ -17,6 +17,8 @@ public class MockPropertyManagementService : IPropertyManagementService
     public static readonly Guid DemoInviteId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1");
     public static readonly Guid DemoContractorUserId = Guid.Parse("33333333-3333-3333-3333-333333333333");
     public static readonly Guid DemoContractorProfileId = Guid.Parse("44444444-4444-4444-4444-444444444444");
+    public static readonly int DemoBuilding1Id = 1;
+    public static readonly int DemoBuilding2Id = 2;
     public static readonly Guid DemoUnit1Id = Guid.Parse("55555555-5555-5555-5555-555555555551");
     public static readonly Guid DemoUnit2Id = Guid.Parse("55555555-5555-5555-5555-555555555552");
     public static readonly Guid DemoTenancyId = Guid.Parse("66666666-6666-6666-6666-666666666666");
@@ -26,6 +28,7 @@ public class MockPropertyManagementService : IPropertyManagementService
 
     private readonly List<UserEntity> _users = new();
     private readonly List<ContractorProfileEntity> _contractors = new();
+    private readonly List<BuildingEntity> _buildings = new();
     private readonly List<UnitEntity> _units = new();
     private readonly List<TenancyEntity> _tenancies = new();
     private readonly List<TenancyCoTenantEntity> _coTenants = new();
@@ -117,11 +120,30 @@ public class MockPropertyManagementService : IPropertyManagementService
             CreatedAt = DateTime.UtcNow.AddMonths(-4)
         });
 
-        // 3. Units
+        // 3. Buildings
+        _buildings.Add(new BuildingEntity
+        {
+            Id = DemoBuilding1Id,
+            LandlordId = DemoLandlordId,
+            Name = "Atlantic Ocean View Residences",
+            Address = "42 Beach Road, Sea Point, Cape Town",
+            CreatedAt = DateTime.UtcNow.AddMonths(-10)
+        });
+        _buildings.Add(new BuildingEntity
+        {
+            Id = DemoBuilding2Id,
+            LandlordId = DemoLandlordId,
+            Name = "Sunset Ridge Estate",
+            Address = "15 Kloof Nek Road, Tamboerskloof",
+            CreatedAt = DateTime.UtcNow.AddMonths(-8)
+        });
+
+        // 4. Units
         _units.Add(new UnitEntity
         {
             Id = DemoUnit1Id,
             LandlordId = DemoLandlordId,
+            BuildingId = DemoBuilding1Id,
             UnitNumber = "Unit 4B",
             BuildingName = "Atlantic Ocean View Residences",
             StreetAddress = "42 Beach Road, Sea Point, Cape Town",
@@ -134,6 +156,7 @@ public class MockPropertyManagementService : IPropertyManagementService
         {
             Id = DemoUnit2Id,
             LandlordId = DemoLandlordId,
+            BuildingId = DemoBuilding2Id,
             UnitNumber = "Apartment 12",
             BuildingName = "Sunset Ridge Estate",
             StreetAddress = "15 Kloof Nek Road, Tamboerskloof",
@@ -183,8 +206,8 @@ public class MockPropertyManagementService : IPropertyManagementService
             PayerId = DemoTenantId,
             Amount = 14500.00m,
             Description = "Monthly Rent - Current Month",
-            Method = "EFT",
-            Status = "PAID",
+            Method = "MANUAL_EFT",
+            Status = "SETTLED",
             GatewayReference = "EFT-OCT-849201",
             PaidAt = DateTime.UtcNow.AddDays(-5),
             CreatedAt = DateTime.UtcNow.AddDays(-6)
@@ -197,8 +220,8 @@ public class MockPropertyManagementService : IPropertyManagementService
             PayerId = DemoTenantId,
             Amount = 14500.00m,
             Description = "Monthly Rent - Previous Month",
-            Method = "EFT",
-            Status = "PAID",
+            Method = "MANUAL_EFT",
+            Status = "SETTLED",
             GatewayReference = "EFT-SEP-194820",
             PaidAt = DateTime.UtcNow.AddDays(-35),
             CreatedAt = DateTime.UtcNow.AddDays(-36)
@@ -250,6 +273,7 @@ public class MockPropertyManagementService : IPropertyManagementService
         {
             Id = DemoWorkOrder1Id,
             UnitId = DemoUnit1Id,
+            BuildingId = DemoBuilding1Id,
             LoggedById = DemoTenantId,
             AssignedContractorId = DemoContractorProfileId,
             Category = "PLUMBING",
@@ -265,6 +289,7 @@ public class MockPropertyManagementService : IPropertyManagementService
         {
             Id = DemoWorkOrder2Id,
             UnitId = DemoUnit1Id,
+            BuildingId = DemoBuilding1Id,
             LoggedById = DemoTenantId,
             AssignedContractorId = electricContractorId,
             Category = "ELECTRICAL",
@@ -377,7 +402,45 @@ public class MockPropertyManagementService : IPropertyManagementService
         }
     }
 
-    // Units
+    // Buildings & Units
+    public Task<IReadOnlyList<BuildingEntity>> GetBuildingsAsync(Guid landlordId)
+    {
+        lock (_lock)
+        {
+            return Task.FromResult<IReadOnlyList<BuildingEntity>>(
+                _buildings.Where(building => building.LandlordId == landlordId).ToList());
+        }
+    }
+
+    public Task CreateBuildingAsync(BuildingEntity building)
+    {
+        lock (_lock)
+        {
+            if (building.Id == 0) building.Id = _buildings.Count == 0 ? 1 : _buildings.Max(item => item.Id) + 1;
+            building.Name = building.Name.Trim();
+            building.Address = building.Address.Trim();
+            building.CreatedAt = DateTime.UtcNow;
+            _buildings.Add(building);
+            return Task.CompletedTask;
+        }
+    }
+
+    public Task DeleteBuildingAsync(Guid landlordId, int buildingId)
+    {
+        lock (_lock)
+        {
+            var building = _buildings.FirstOrDefault(item =>
+                item.Id == buildingId && item.LandlordId == landlordId);
+            if (building is null)
+                throw new InvalidOperationException("The building could not be found for this landlord.");
+            if (_units.Any(unit => unit.BuildingId == buildingId))
+                throw new InvalidOperationException("Remove all units from this building before deleting it.");
+
+            _buildings.Remove(building);
+            return Task.CompletedTask;
+        }
+    }
+
     public Task<IReadOnlyList<UnitEntity>> GetUnitsAsync(Guid? landlordId = null)
     {
         lock (_lock)
@@ -403,9 +466,38 @@ public class MockPropertyManagementService : IPropertyManagementService
     {
         lock (_lock)
         {
+            var building = _buildings.FirstOrDefault(item =>
+                item.Id == unit.BuildingId && item.LandlordId == unit.LandlordId)
+                ?? throw new InvalidOperationException("The selected building does not belong to this landlord.");
             if (unit.Id == Guid.Empty) unit.Id = Guid.NewGuid();
+            unit.BuildingName = building.Name;
+            unit.StreetAddress = building.Address;
             _units.Add(unit);
             return Task.FromResult(unit);
+        }
+    }
+
+    public Task DeleteUnitAsync(Guid landlordId, Guid unitId)
+    {
+        lock (_lock)
+        {
+            var unit = _units.FirstOrDefault(item =>
+                item.Id == unitId && item.LandlordId == landlordId);
+            if (unit is null)
+                throw new InvalidOperationException("The unit could not be found for this landlord.");
+
+            var hasTenancies = _tenancies.Any(tenancy => tenancy.UnitId == unitId);
+            var hasInvites = _invites.Any(invite => invite.UnitId == unitId);
+            var hasMeters = _meters.Any(meter => meter.UnitId == unitId);
+            var hasWorkOrders = _workOrders.Any(workOrder => workOrder.UnitId == unitId);
+            if (hasTenancies || hasInvites || hasMeters || hasWorkOrders)
+            {
+                throw new InvalidOperationException(
+                    "This unit has tenancy, invite, utility meter, or work-order history and cannot be deleted.");
+            }
+
+            _units.Remove(unit);
+            return Task.CompletedTask;
         }
     }
 
@@ -473,6 +565,37 @@ public class MockPropertyManagementService : IPropertyManagementService
         lock (_lock)
         {
             return Task.FromResult<IReadOnlyList<TenancyCoTenantEntity>>(_coTenants.Where(c => c.TenancyId == tenancyId).ToList());
+        }
+    }
+
+    public Task RemoveTenantFromUnitAsync(Guid landlordId, Guid tenancyId, Guid tenantId)
+    {
+        lock (_lock)
+        {
+            var tenancy = _tenancies.FirstOrDefault(item => item.Id == tenancyId);
+            var unit = tenancy is null
+                ? null
+                : _units.FirstOrDefault(item =>
+                    item.Id == tenancy.UnitId && item.LandlordId == landlordId);
+            if (tenancy is null || unit is null)
+                throw new InvalidOperationException("The tenancy could not be found for this landlord.");
+
+            if (tenancy.PrimaryTenantId == tenantId)
+            {
+                tenancy.IsActive = false;
+                tenancy.EndDate = DateTime.UtcNow.Date < tenancy.StartDate.Date
+                    ? tenancy.StartDate.Date
+                    : DateTime.UtcNow.Date;
+                return Task.CompletedTask;
+            }
+
+            var coTenant = _coTenants.FirstOrDefault(item =>
+                item.TenancyId == tenancyId && item.TenantId == tenantId);
+            if (coTenant is null)
+                throw new InvalidOperationException("The tenant is not assigned to this tenancy.");
+
+            _coTenants.Remove(coTenant);
+            return Task.CompletedTask;
         }
     }
 
@@ -661,7 +784,19 @@ public class MockPropertyManagementService : IPropertyManagementService
     {
         lock (_lock)
         {
-            return Task.FromResult<IReadOnlyList<PaymentEntity>>(_payments.OrderByDescending(p => p.CreatedAt).ToList());
+            var landlordTenancyIds = landlordId is { } ownerId && ownerId != Guid.Empty
+                ? _tenancies
+                    .Where(tenancy => _units.Any(unit => unit.Id == tenancy.UnitId && unit.LandlordId == ownerId))
+                    .Select(tenancy => tenancy.Id)
+                    .ToHashSet()
+                : null;
+
+            var payments = landlordTenancyIds is null
+                ? _payments
+                : _payments.Where(payment => landlordTenancyIds.Contains(payment.TenancyId));
+
+            return Task.FromResult<IReadOnlyList<PaymentEntity>>(
+                payments.OrderByDescending(payment => payment.CreatedAt).ToList());
         }
     }
 
@@ -671,7 +806,7 @@ public class MockPropertyManagementService : IPropertyManagementService
         {
             if (payment.Id == Guid.Empty) payment.Id = Guid.NewGuid();
             payment.PaidAt ??= DateTime.UtcNow;
-            payment.Status = "PAID";
+            payment.Status = "SETTLED";
             _payments.Insert(0, payment);
             return Task.FromResult(payment);
         }
@@ -721,8 +856,8 @@ public class MockPropertyManagementService : IPropertyManagementService
                 PayerId = payerId,
                 Amount = amount,
                 Description = $"Prepaid {(meter?.MeterType ?? "Utility")} Token Purchase",
-                Method = "CREDIT_CARD",
-                Status = "PAID",
+                Method = "CARD",
+                Status = "SETTLED",
                 GatewayReference = $"TOKEN-TXN-{Random.Shared.Next(100000, 999999)}",
                 PaidAt = DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow
@@ -759,7 +894,31 @@ public class MockPropertyManagementService : IPropertyManagementService
     {
         lock (_lock)
         {
-            return Task.FromResult<IReadOnlyList<WorkOrderEntity>>(_workOrders.OrderByDescending(w => w.CreatedAt).ToList());
+            var buildingIds = _buildings
+                .Where(building => building.LandlordId == landlordId)
+                .Select(building => building.Id)
+                .ToHashSet();
+            var landlordUnitIds = _units
+                .Where(unit => unit.LandlordId == landlordId && buildingIds.Contains(unit.BuildingId))
+                .Select(unit => unit.Id)
+                .ToHashSet();
+            var tenantIdsByUnit = _tenancies
+                .Where(tenancy => landlordUnitIds.Contains(tenancy.UnitId))
+                .GroupBy(tenancy => tenancy.UnitId)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Select(tenancy => tenancy.PrimaryTenantId)
+                        .Concat(group.SelectMany(tenancy => _coTenants
+                            .Where(coTenant => coTenant.TenancyId == tenancy.Id)
+                            .Select(coTenant => coTenant.TenantId)))
+                        .ToHashSet());
+            return Task.FromResult<IReadOnlyList<WorkOrderEntity>>(
+                _workOrders.Where(workOrder =>
+                        buildingIds.Contains(workOrder.BuildingId) &&
+                        tenantIdsByUnit.TryGetValue(workOrder.UnitId, out var tenantIds) &&
+                        tenantIds.Contains(workOrder.LoggedById))
+                    .OrderByDescending(workOrder => workOrder.CreatedAt)
+                    .ToList());
         }
     }
 
@@ -779,11 +938,27 @@ public class MockPropertyManagementService : IPropertyManagementService
         }
     }
 
+    public Task<WorkOrderEntity?> GetContractorWorkOrderByDispatchPinAsync(Guid id, string pin)
+    {
+        lock (_lock)
+        {
+            var workOrder = _workOrders.FirstOrDefault(w => w.Id == id && w.AssignedContractorId.HasValue);
+            var expectedPin = id.ToString("N")[..4];
+            return Task.FromResult(
+                workOrder != null && pin.Trim().Equals(expectedPin, StringComparison.OrdinalIgnoreCase)
+                    ? workOrder
+                    : null);
+        }
+    }
+
     public Task<WorkOrderEntity> CreateWorkOrderAsync(WorkOrderEntity workOrder)
     {
         lock (_lock)
         {
+            var unit = _units.FirstOrDefault(item => item.Id == workOrder.UnitId)
+                ?? throw new InvalidOperationException("The work order unit could not be found.");
             if (workOrder.Id == Guid.Empty) workOrder.Id = Guid.NewGuid();
+            workOrder.BuildingId = unit.BuildingId;
             workOrder.Status = "LOGGED";
             _workOrders.Insert(0, workOrder);
             return Task.FromResult(workOrder);
@@ -1023,7 +1198,7 @@ public class MockPropertyManagementService : IPropertyManagementService
             if (invoice != null)
             {
                 invoice.IsApprovedByLandlord = isApproved;
-                invoice.PayoutStatus = isApproved ? "PAID" : "REJECTED";
+                invoice.PayoutStatus = isApproved ? "SETTLED" : "FAILED";
                 return Task.FromResult(invoice);
             }
             throw new KeyNotFoundException($"Invoice {invoiceId} not found.");

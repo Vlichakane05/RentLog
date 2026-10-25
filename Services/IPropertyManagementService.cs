@@ -14,10 +14,14 @@ public interface IPropertyManagementService
     Task<UserEntity> CreateUserAsync(UserEntity user);
     Task<IReadOnlyList<UserEntity>> GetUsersByRoleAsync(string role);
 
-    // Units
+    // Buildings & Units
+    Task<IReadOnlyList<BuildingEntity>> GetBuildingsAsync(Guid landlordId);
+    Task CreateBuildingAsync(BuildingEntity building);
+    Task DeleteBuildingAsync(Guid landlordId, int buildingId);
     Task<IReadOnlyList<UnitEntity>> GetUnitsAsync(Guid? landlordId = null);
     Task<UnitEntity?> GetUnitByIdAsync(Guid id);
     Task<UnitEntity> CreateUnitAsync(UnitEntity unit);
+    Task DeleteUnitAsync(Guid landlordId, Guid unitId);
     Task<UnitEntity> UpdateUnitAsync(UnitEntity unit);
 
     // Tenancies & Co-tenants
@@ -26,6 +30,7 @@ public interface IPropertyManagementService
     Task<TenancyEntity?> GetTenancyByIdAsync(Guid id);
     Task<TenancyEntity> CreateTenancyAsync(TenancyEntity tenancy, IEnumerable<TenancyCoTenantEntity>? coTenants = null);
     Task<IReadOnlyList<TenancyCoTenantEntity>> GetCoTenantsAsync(Guid tenancyId);
+    Task RemoveTenantFromUnitAsync(Guid landlordId, Guid tenancyId, Guid tenantId);
 
     // Tenant invites
     Task<TenancyInviteEntity> InviteTenantToUnitAsync(Guid landlordId, Guid unitId, string tenantEmail, DateTime startDate, DateTime endDate);
@@ -51,6 +56,7 @@ public interface IPropertyManagementService
     Task<IReadOnlyList<WorkOrderEntity>> GetWorkOrdersForLandlordAsync(Guid landlordId);
     Task<IReadOnlyList<WorkOrderEntity>> GetWorkOrdersForContractorAsync(Guid contractorId);
     Task<WorkOrderEntity?> GetWorkOrderByIdAsync(Guid id);
+    Task<WorkOrderEntity?> GetContractorWorkOrderByDispatchPinAsync(Guid id, string pin);
     Task<WorkOrderEntity> CreateWorkOrderAsync(WorkOrderEntity workOrder);
     Task<WorkOrderEntity> UpdateWorkOrderStatusAsync(Guid workOrderId, string newStatus);
     Task<WorkOrderEntity> AssignContractorAsync(Guid workOrderId, Guid contractorId);

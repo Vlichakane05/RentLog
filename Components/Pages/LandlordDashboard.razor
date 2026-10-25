@@ -7,10 +7,11 @@
 @inject NavigationManager Navigation
 @inject IEmailNotificationService EmailService
 @inject RentLogAuthStateProvider AuthStateProvider
+@inject IJSRuntime JS
 
 <PageTitle>Landlord Portal - RentLog</PageTitle>
 
-<div class="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16">
+<div class="landlord-dashboard-shell financial-report-screen min-h-screen bg-slate-950 text-slate-100 font-sans pb-16">
     @Header
 
     @if (_isLoading)
@@ -23,6 +24,38 @@
     else
     {
         <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+            @if (ActiveEmergencyWorkOrders.Count > 0)
+            {
+                <section class="emergency-banner" role="alert" aria-live="assertive">
+                    <div class="emergency-symbol" aria-hidden="true">!</div>
+                    <div class="min-w-0 flex-1">
+                        <p class="eyebrow">Emergency maintenance alert</p>
+                        <h2 class="text-lg font-bold">
+                            @ActiveEmergencyWorkOrders.Count emergency @(ActiveEmergencyWorkOrders.Count == 1 ? "issue needs" : "issues need") your attention
+                        </h2>
+                        <ul class="mt-2 space-y-1 text-sm">
+                            @foreach (var emergency in ActiveEmergencyWorkOrders.Take(3))
+                            {
+                                var emergencyUnit = _units.FirstOrDefault(unit => unit.Id == emergency.UnitId);
+                                <li>
+                                    <strong>@emergency.Title</strong>
+                                    <span> — @(emergencyUnit is null ? "Unit" : $"{emergencyUnit.BuildingName}, Unit {emergencyUnit.UnitNumber}")</span>
+                                </li>
+                            }
+                        </ul>
+                        @if (ActiveEmergencyWorkOrders.Count > 3)
+                        {
+                            <p class="mt-1 text-xs">And @(ActiveEmergencyWorkOrders.Count - 3) more emergency issues.</p>
+                        }
+                    </div>
+                    <button type="button"
+                            @onclick="@(() => _activeTab = "WORK_ORDERS")"
+                            class="emergency-action rounded-xl px-4 py-2 text-sm font-semibold">
+                        View emergencies
+                    </button>
+                </section>
+            }
+
             <!-- Financial & Portfolio KPI Cards -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm">
@@ -33,7 +66,7 @@
                         </div>
                     </div>
                     <p class="text-2xl font-black text-white">R @_totalRevenue.ToString("N2")</p>
-                    <span class="text-[11px] text-emerald-400 font-medium">@_payments.Count(p => p.Status == "PAID") verified rent payments</span>
+                    <span class="text-[11px] text-emerald-400 font-medium">@_payments.Count(p => p.Status == "SETTLED") settled rent payments</span>
                 </div>
 
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm">
@@ -79,7 +112,7 @@
                     <span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300">@_units.Count</span>
                 </button>
 
-                <button type="button" @onclick="@(() => _activeTab = "FINANCIALS")" 
+                <button type="button" @onclick="OpenFinancialLedgerAsync"
                         class="pb-3 px-3 sm:px-4 text-sm font-semibold border-b-2 flex items-center space-x-2 transition-colors whitespace-nowrap @(_activeTab == "FINANCIALS" ? "border-indigo-500 text-indigo-400" : "border-transparent text-slate-400 hover:text-slate-200")">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     <span>Financial Ledger</span>
@@ -91,6 +124,12 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /></svg>
                     <span>Work Orders & Quotes</span>
                     <span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] bg-indigo-500/20 text-indigo-300">@_workOrders.Count</span>
+                    @if (ActiveEmergencyWorkOrders.Count > 0)
+                    {
+                        <span class="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                            @ActiveEmergencyWorkOrders.Count Emergency
+                        </span>
+                    }
                 </button>
 
                 <button type="button" @onclick="@(() => _activeTab = "INVOICES")" 
@@ -116,18 +155,62 @@
                             <p class="text-xs text-slate-400">Configure units, invite tenants, and track active leases</p>
                         </div>
                         <div class="flex items-center gap-2">
+                            <button type="button" @onclick="OpenAddBuildingModal"
+                                    class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-semibold border border-slate-700 transition-all">
+                                Add Building
+                            </button>
                             <button type="button" @onclick="@(() => OpenInviteModal(null))"
                                     class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-semibold border border-slate-700 transition-all flex items-center space-x-1.5">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
                                 <span>Invite Tenant</span>
                             </button>
                             <button type="button" @onclick="OpenAddUnitModal" 
-                                    class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow transition-all flex items-center space-x-1.5">
+                                    disabled="@(_buildings.Count == 0)"
+                                    class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow transition-all flex items-center space-x-1.5 disabled:opacity-50">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                                <span>Add Property Unit</span>
+                                <span>Add Unit</span>
                             </button>
                         </div>
                     </div>
+
+                    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+                        <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Your Buildings</h3>
+                        @if (!string.IsNullOrWhiteSpace(_propertyActionError))
+                        {
+                            <div class="mb-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300" role="alert">@_propertyActionError</div>
+                        }
+                        @if (_buildings.Count == 0)
+                        {
+                            <p class="text-xs text-slate-500">No buildings yet. Add a building before creating its units.</p>
+                        }
+                        else
+                        {
+                            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                @foreach (var building in _buildings)
+                                {
+                                    <div class="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+                                        @{
+                                            var buildingUnitCount = _units.Count(unit => unit.BuildingId == building.Id);
+                                        }
+                                        <div class="flex items-start justify-between gap-2">
+                                            <div class="min-w-0">
+                                                <p class="text-sm font-semibold text-slate-200">@building.Name</p>
+                                                <p class="text-xs text-slate-400">@building.Address</p>
+                                                <p class="mt-1 text-[11px] text-indigo-300">@buildingUnitCount units</p>
+                                            </div>
+                                            <button type="button"
+                                                    @onclick="@(() => HandleDeleteBuildingAsync(building))"
+                                                    disabled="@(buildingUnitCount > 0 || _deletingBuildingId == building.Id)"
+                                                    title="@(buildingUnitCount > 0 ? "Remove all units before deleting this building." : "Delete this empty building")"
+                                                    class="shrink-0 rounded-lg border border-rose-500/30 px-2 py-1 text-[11px] font-semibold text-rose-300 transition-colors hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-40">
+                                                @(_deletingBuildingId == building.Id ? "Deleting..." : "Delete")
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </section>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         @foreach (var unit in _units)
@@ -141,14 +224,22 @@
                                         <h3 class="text-base font-bold text-white">@unit.BuildingName &bull; @unit.UnitNumber</h3>
                                         <p class="text-xs text-slate-400">@unit.StreetAddress</p>
                                     </div>
-                                    @if (activeTenancy != null)
-                                    {
-                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Occupied</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400">Vacant</span>
-                                    }
+                                    <div class="flex shrink-0 flex-col items-end gap-2">
+                                        @if (activeTenancy != null)
+                                        {
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Occupied</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400">Vacant</span>
+                                        }
+                                        <button type="button"
+                                                @onclick="@(() => HandleDeleteUnitAsync(unit))"
+                                                disabled="@(_deletingUnitId == unit.Id)"
+                                                class="rounded-lg border border-rose-500/30 px-2 py-1 text-[10px] font-semibold text-rose-300 transition-colors hover:bg-rose-500/10 disabled:opacity-50">
+                                            @(_deletingUnitId == unit.Id ? "Deleting..." : "Delete unit")
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div class="grid grid-cols-2 gap-2 text-xs py-2 border-y border-slate-800">
@@ -168,7 +259,7 @@
                                     {
                                         var primaryTenant = GetUserName(activeTenancy.PrimaryTenantId);
                                         <div class="space-y-1">
-                                            <div class="flex justify-between">
+                                            <div class="flex items-center justify-between gap-2">
                                                 <span>Primary tenant:</span>
                                                 <span class="text-slate-200">@primaryTenant</span>
                                             </div>
@@ -176,10 +267,30 @@
                                                 <span>Active Lease:</span>
                                                 <span class="text-slate-200">@activeTenancy.StartDate.ToString("dd MMM yy") &ndash; @activeTenancy.EndDate.ToString("dd MMM yy")</span>
                                             </div>
-                                            <div class="flex justify-between">
-                                                <span>Co-Tenants:</span>
-                                                <span class="text-indigo-400 font-semibold">@coTenants.Count registered (@string.Join(", ", coTenants.Select(c => $"{c.RentSharePercentage}%")))</span>
-                                            </div>
+                                            <button type="button"
+                                                    @onclick="@(() => HandleRemoveTenantAsync(activeTenancy, activeTenancy.PrimaryTenantId, true))"
+                                                    disabled="@(_updatingTenancyId == activeTenancy.Id)"
+                                                    class="mt-2 rounded-lg border border-rose-500/30 px-2 py-1 text-[11px] font-semibold text-rose-300 transition-colors hover:bg-rose-500/10 disabled:opacity-50">
+                                                @(_updatingTenancyId == activeTenancy.Id ? "Updating..." : "Remove primary tenant / end lease")
+                                            </button>
+                                            @if (coTenants.Count > 0)
+                                            {
+                                                <div class="mt-2 space-y-1 border-t border-slate-800 pt-2">
+                                                    <p class="text-[10px] uppercase tracking-wider text-slate-500">Co-tenants</p>
+                                                    @foreach (var coTenant in coTenants)
+                                                    {
+                                                        <div class="flex items-center justify-between gap-2">
+                                                            <span class="text-slate-300">@GetUserName(coTenant.TenantId) (@coTenant.RentSharePercentage%)</span>
+                                                            <button type="button"
+                                                                    @onclick="@(() => HandleRemoveTenantAsync(activeTenancy, coTenant.TenantId, false))"
+                                                                    disabled="@(_updatingTenancyId == activeTenancy.Id)"
+                                                                    class="rounded-lg border border-rose-500/30 px-2 py-1 text-[10px] font-semibold text-rose-300 transition-colors hover:bg-rose-500/10 disabled:opacity-50">
+                                                                Remove
+                                                            </button>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
                                         </div>
                                     }
                                     else
@@ -221,6 +332,19 @@
                             <h2 class="text-base font-bold text-white">Rental Income & Payout Ledger</h2>
                             <p class="text-xs text-slate-400">Full payment history with status tracking and gateway reconciliation</p>
                         </div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" @onclick="RefreshFinancialLedgerAsync"
+                                    class="inline-flex items-center gap-2 rounded-xl bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-200 shadow transition-colors hover:bg-slate-700 cursor-pointer">
+                                Refresh payments
+                            </button>
+                            <button type="button" @onclick="PrintFinancialReportAsync"
+                                    class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white shadow transition-colors hover:bg-indigo-500 cursor-pointer">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2m-12-4h12v8H6z" />
+                                </svg>
+                                <span>Print / Save as PDF</span>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
@@ -229,6 +353,8 @@
                                 <thead class="bg-slate-800/40 text-slate-400 font-semibold uppercase tracking-wider">
                                     <tr>
                                         <th class="py-3 px-4">Date</th>
+                                        <th class="py-3 px-4">Tenant</th>
+                                        <th class="py-3 px-4">Unit</th>
                                         <th class="py-3 px-4">Description</th>
                                         <th class="py-3 px-4">Method</th>
                                         <th class="py-3 px-4">Gateway Reference</th>
@@ -239,16 +365,26 @@
                                 <tbody class="divide-y divide-slate-800">
                                     @foreach (var payment in _payments)
                                     {
+                                        var paymentTenancy = _tenancies.FirstOrDefault(tenancy => tenancy.Id == payment.TenancyId);
+                                        var paymentUnit = paymentTenancy is null
+                                            ? null
+                                            : _units.FirstOrDefault(unit => unit.Id == paymentTenancy.UnitId);
                                         <tr class="hover:bg-slate-800/30 transition-colors">
                                             <td class="py-3 px-4 text-slate-400">@payment.CreatedAt.ToString("dd MMM yyyy, HH:mm")</td>
+                                            <td class="py-3 px-4 text-slate-200">@(_usersById.GetValueOrDefault(payment.PayerId)?.FullName ?? "Tenant")</td>
+                                            <td class="py-3 px-4 text-slate-400">@(paymentUnit is null ? "—" : $"{paymentUnit.BuildingName}, Unit {paymentUnit.UnitNumber}")</td>
                                             <td class="py-3 px-4 font-medium text-slate-200">@payment.Description</td>
                                             <td class="py-3 px-4 text-slate-400">@payment.Method</td>
                                             <td class="py-3 px-4 font-mono text-slate-400">@(payment.GatewayReference ?? "-")</td>
                                             <td class="py-3 px-4 text-right font-bold text-emerald-400">+ R @payment.Amount.ToString("N2")</td>
                                             <td class="py-3 px-4 text-center">
-                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                                    @payment.Status
-                                                </span>
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold @(payment.Status switch
+                                                {
+                                                    "SETTLED" => "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30",
+                                                    "FAILED" => "bg-rose-500/20 text-rose-400 border border-rose-500/30",
+                                                    "PROCESSING" => "bg-sky-500/20 text-sky-400 border border-sky-500/30",
+                                                    _ => "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                                                })">@payment.Status</span>
                                             </td>
                                         </tr>
                                     }
@@ -306,7 +442,7 @@
                             var assignedContractor = _contractors.FirstOrDefault(c => c.Id == wo.AssignedContractorId);
                             var quotes = _quotes.Where(q => q.WorkOrderId == wo.Id).ToList();
 
-                            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+                            <div class="bg-slate-900 border @(wo.Priority == "EMERGENCY" ? "border-rose-500/60 shadow-rose-950/30" : "border-slate-800") rounded-2xl p-5 shadow-sm space-y-4">
                                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
                                     <div>
                                         <div class="flex items-center space-x-2">
@@ -316,7 +452,9 @@
                                             <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300">
                                                 @wo.Category
                                             </span>
-                                            <span class="text-xs text-slate-500">&bull; Priority: <strong class="text-white">@wo.Priority</strong></span>
+                                            <span class="text-xs text-slate-500">&bull; Priority:
+                                                <strong class="@(wo.Priority == "EMERGENCY" ? "text-rose-300" : "text-white")">@wo.Priority</strong>
+                                            </span>
                                         </div>
                                         <h3 class="text-base font-bold text-white mt-1">@wo.Title</h3>
                                     </div>
@@ -502,6 +640,41 @@
         </main>
     }
 
+    @if (_showAddBuildingModal)
+    {
+        <div class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-base font-bold text-white">Add Building</h3>
+                    <button type="button" @onclick="@(() => _showAddBuildingModal = false)" class="text-slate-400 hover:text-white">&times;</button>
+                </div>
+                <EditForm Model="@_buildingModel" OnValidSubmit="HandleCreateBuildingAsync" class="space-y-3.5 text-xs">
+                    <DataAnnotationsValidator />
+                    @if (!string.IsNullOrWhiteSpace(_buildingError))
+                    {
+                        <div class="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-300" role="alert">@_buildingError</div>
+                    }
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Building Name</label>
+                        <InputText @bind-Value="_buildingModel.Name" placeholder="e.g. Ocean View Residences" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white" />
+                        <ValidationMessage For="@(() => _buildingModel.Name)" class="text-rose-400" />
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Street Address</label>
+                        <InputText @bind-Value="_buildingModel.Address" placeholder="42 Beach Road, Sea Point" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white" />
+                        <ValidationMessage For="@(() => _buildingModel.Address)" class="text-rose-400" />
+                    </div>
+                    <div class="pt-4 flex justify-end space-x-2">
+                        <button type="button" @onclick="@(() => _showAddBuildingModal = false)" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300">Cancel</button>
+                        <button type="submit" disabled="@_isCreatingBuilding" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold disabled:opacity-50">
+                            @(_isCreatingBuilding ? "Saving..." : "Save Building")
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+
     <!-- MODAL 1: ADD PROPERTY UNIT -->
     @if (_showAddUnitModal)
     {
@@ -513,22 +686,24 @@
                 </div>
                 <EditForm Model="@_unitModel" OnValidSubmit="HandleCreateUnitAsync" class="space-y-3.5 text-xs">
                     <DataAnnotationsValidator />
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-slate-300 font-semibold mb-1">Unit Number</label>
-                            <InputText @bind-Value="_unitModel.UnitNumber" placeholder="Unit 4B" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white" />
-                            <ValidationMessage For="@(() => _unitModel.UnitNumber)" class="text-rose-400" />
-                        </div>
-                        <div>
-                            <label class="block text-slate-300 font-semibold mb-1">Building Name</label>
-                            <InputText @bind-Value="_unitModel.BuildingName" placeholder="Ocean View" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white" />
-                            <ValidationMessage For="@(() => _unitModel.BuildingName)" class="text-rose-400" />
-                        </div>
+                    @if (!string.IsNullOrWhiteSpace(_unitError))
+                    {
+                        <div class="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-300" role="alert">@_unitError</div>
+                    }
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Building</label>
+                        <InputSelect @bind-Value="_unitModel.BuildingId" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+                            @foreach (var building in _buildings)
+                            {
+                                <option value="@building.Id">@building.Name · @building.Address</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => _unitModel.BuildingId)" class="text-rose-400" />
                     </div>
                     <div>
-                        <label class="block text-slate-300 font-semibold mb-1">Street Address</label>
-                        <InputText @bind-Value="_unitModel.StreetAddress" placeholder="42 Beach Road, Sea Point" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white" />
-                        <ValidationMessage For="@(() => _unitModel.StreetAddress)" class="text-rose-400" />
+                        <label class="block text-slate-300 font-semibold mb-1">Unit Number</label>
+                        <InputText @bind-Value="_unitModel.UnitNumber" placeholder="Unit 4B" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white" />
+                        <ValidationMessage For="@(() => _unitModel.UnitNumber)" class="text-rose-400" />
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
@@ -756,11 +931,92 @@
     }
 </div>
 
+@if (!_isLoading)
+{
+    <section class="financial-report-print" aria-label="Financial ledger report">
+        <header>
+            <h1>Rental Income &amp; Payout Ledger</h1>
+            <p>RentLog landlord financial report</p>
+            <dl class="financial-report-meta">
+                <div><dt>Landlord</dt><dd>@(_currentUser?.Name ?? "Landlord")</dd></div>
+                <div><dt>Email</dt><dd>@(_currentUser?.Email ?? "Not available")</dd></div>
+                <div><dt>Generated</dt><dd>@DateTime.Now.ToString("dd MMM yyyy, HH:mm")</dd></div>
+                <div><dt>Transactions</dt><dd>@_payments.Count</dd></div>
+            </dl>
+        </header>
+
+        <section class="financial-report-summary" aria-label="Payment totals by status">
+            <div>
+                <h2>Total collected</h2>
+                <p>R @_totalRevenue.ToString("N2")</p>
+            </div>
+            @foreach (var statusGroup in _payments
+                .GroupBy(payment => payment.Status)
+                .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                <div>
+                    <h2>@statusGroup.Key (@statusGroup.Count())</h2>
+                    <p>R @statusGroup.Sum(payment => payment.Amount).ToString("N2")</p>
+                </div>
+            }
+        </section>
+
+        <h2>Transaction details</h2>
+        @if (_payments.Count == 0)
+        {
+            <p>No payment transactions are available for this report.</p>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date recorded</th>
+                        <th>Date paid</th>
+                        <th>Tenant</th>
+                        <th>Unit</th>
+                        <th>Description</th>
+                        <th>Method</th>
+                        <th>Payment ID / Gateway reference</th>
+                        <th>Status</th>
+                        <th class="financial-report-amount">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var payment in _payments.OrderByDescending(payment => payment.CreatedAt))
+                    {
+                        var tenancy = _tenancies.FirstOrDefault(item => item.Id == payment.TenancyId);
+                        var unit = tenancy is null ? null : _units.FirstOrDefault(item => item.Id == tenancy.UnitId);
+                        var payerName = _usersById.TryGetValue(payment.PayerId, out var payer)
+                            ? payer.FullName
+                            : tenancy is null ? "Unknown tenant" : GetUserName(tenancy.PrimaryTenantId);
+                        <tr>
+                            <td>@payment.CreatedAt.ToString("dd MMM yyyy, HH:mm")</td>
+                            <td>@(payment.PaidAt?.ToString("dd MMM yyyy, HH:mm") ?? "—")</td>
+                            <td>@payerName</td>
+                            <td>@(unit is null ? "Unknown unit" : $"{unit.BuildingName} - Unit {unit.UnitNumber}")</td>
+                            <td>@payment.Description</td>
+                            <td>@payment.Method</td>
+                            <td>
+                                <div>@payment.Id</div>
+                                <div>@(payment.GatewayReference ?? "No gateway reference")</div>
+                            </td>
+                            <td>@payment.Status</td>
+                            <td class="financial-report-amount">R @payment.Amount.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+}
+
 @code {
     RenderFragment Header => @<div class="flex items-center justify-between bg-slate-900 p-4 border-b border-slate-800">
         <h2 class="text-xl font-bold"><span class="text-white">Rent</span><span class="text-indigo-500">Log</span></h2>
         <div class="flex items-center space-x-4">
             <span class="text-slate-300">@(_currentUser?.Name ?? "User")</span>
+            <ThemeToggle />
             <button type="button" @onclick="HandleLogoutAsync"
                     class="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2 text-sm font-semibold text-slate-200 shadow-sm transition-colors hover:border-rose-500 hover:bg-rose-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -788,6 +1044,7 @@ private bool _isLoading = true;
     private string _activeTab = "UNITS";
 
     private List<UnitEntity> _units = new();
+    private List<BuildingEntity> _buildings = new();
     private List<TenancyEntity> _tenancies = new();
     private List<TenancyCoTenantEntity> _coTenants = new();
     private List<PaymentEntity> _payments = new();
@@ -799,13 +1056,30 @@ private bool _isLoading = true;
     private List<TenancyInviteEntity> _invites = new();
     private readonly Dictionary<Guid, UserEntity> _usersById = new();
 
+    private IReadOnlyList<WorkOrderEntity> ActiveEmergencyWorkOrders =>
+        _workOrders
+            .Where(workOrder =>
+                string.Equals(workOrder.Priority, "EMERGENCY", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(workOrder.Status, "COMPLETED", StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(workOrder => workOrder.CreatedAt)
+            .ToList();
+
     private decimal _totalRevenue;
     private decimal _totalContractorInvoices;
 
     // Modals
     private bool _showAddUnitModal;
     private bool _isCreatingUnit;
+    private string? _unitError;
     private CreateUnitViewModel _unitModel = new();
+    private bool _showAddBuildingModal;
+    private bool _isCreatingBuilding;
+    private string? _buildingError;
+    private CreateBuildingViewModel _buildingModel = new();
+    private int? _deletingBuildingId;
+    private Guid? _deletingUnitId;
+    private Guid? _updatingTenancyId;
+    private string? _propertyActionError;
 
     private bool _showAssignModal;
     private WorkOrderEntity? _selectedWorkOrder;
@@ -830,6 +1104,27 @@ private bool _isLoading = true;
         await LoadLandlordDataAsync();
     }
 
+    private async Task PrintFinancialReportAsync()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+
+    private async Task OpenFinancialLedgerAsync()
+    {
+        _activeTab = "FINANCIALS";
+        await RefreshFinancialLedgerAsync();
+    }
+
+    private async Task RefreshFinancialLedgerAsync()
+    {
+        var landlordId = _currentUser != null && Guid.TryParse(_currentUser.Id, out var id)
+            ? id
+            : MockPropertyManagementService.DemoLandlordId;
+
+        _payments = (await PropertyService.GetAllPaymentsAsync(landlordId)).ToList();
+        _totalRevenue = _payments.Where(payment => payment.Status == "SETTLED").Sum(payment => payment.Amount);
+    }
+
     private async Task LoadLandlordDataAsync()
     {
         _isLoading = true;
@@ -839,6 +1134,7 @@ private bool _isLoading = true;
                 ? id
                 : MockPropertyManagementService.DemoLandlordId;
 
+            _buildings = (await PropertyService.GetBuildingsAsync(landlordId)).ToList();
             _units = (await PropertyService.GetUnitsAsync(landlordId)).ToList();
             _tenancies = (await PropertyService.GetTenanciesAsync(landlordId)).ToList();
             _invites = (await PropertyService.GetInvitesForLandlordAsync(landlordId)).ToList();
@@ -868,7 +1164,7 @@ private bool _isLoading = true;
                 _proofMedia.AddRange(media);
             }
 
-            _totalRevenue = _payments.Where(p => p.Status == "PAID").Sum(p => p.Amount);
+            _totalRevenue = _payments.Where(p => p.Status == "SETTLED").Sum(p => p.Amount);
             _totalContractorInvoices = _invoices.Sum(i => i.TotalAmount);
         }
         finally
@@ -937,13 +1233,166 @@ private bool _isLoading = true;
 
     private void OpenAddUnitModal()
     {
+        if (_buildings.Count == 0)
+        {
+            OpenAddBuildingModal();
+            return;
+        }
+
+        _unitError = null;
         _unitModel = new CreateUnitViewModel
         {
-            BuildingName = "Atlantic Ocean View",
+            BuildingId = _buildings[0].Id,
             MonthlyRent = 15000.00m,
             DepositAmount = 30000.00m
         };
         _showAddUnitModal = true;
+    }
+
+    private void OpenAddBuildingModal()
+    {
+        _buildingError = null;
+        _buildingModel = new CreateBuildingViewModel();
+        _showAddBuildingModal = true;
+    }
+
+    private async Task HandleCreateBuildingAsync()
+    {
+        if (_isCreatingBuilding)
+            return;
+
+        _buildingError = null;
+        _isCreatingBuilding = true;
+        try
+        {
+            if (_currentUser?.Role != UserRole.Landlord ||
+                !Guid.TryParse(_currentUser.Id, out var landlordId))
+            {
+                throw new InvalidOperationException(
+                    "A signed-in landlord account is required to create a building. Please sign out and sign in again.");
+            }
+
+            await PropertyService.CreateBuildingAsync(new BuildingEntity
+            {
+                LandlordId = landlordId,
+                Name = _buildingModel.Name,
+                Address = _buildingModel.Address,
+                CreatedAt = DateTime.UtcNow
+            });
+            _buildings = (await PropertyService.GetBuildingsAsync(landlordId)).ToList();
+            _showAddBuildingModal = false;
+        }
+        catch (Exception ex)
+        {
+            _buildingError = ex.Message;
+        }
+        finally
+        {
+            _isCreatingBuilding = false;
+        }
+    }
+
+    private async Task HandleDeleteBuildingAsync(BuildingEntity building)
+    {
+        if (_deletingBuildingId.HasValue)
+            return;
+
+        _propertyActionError = null;
+        try
+        {
+            var confirmed = await JS.InvokeAsync<bool>(
+                "confirm",
+                $"Delete the empty building \"{building.Name}\"? This cannot be undone.");
+            if (!confirmed)
+                return;
+
+            if (_currentUser?.Role != UserRole.Landlord ||
+                !Guid.TryParse(_currentUser.Id, out var landlordId))
+            {
+                throw new InvalidOperationException("A signed-in landlord account is required to delete a building.");
+            }
+
+            _deletingBuildingId = building.Id;
+            await PropertyService.DeleteBuildingAsync(landlordId, building.Id);
+            _buildings = (await PropertyService.GetBuildingsAsync(landlordId)).ToList();
+        }
+        catch (Exception ex)
+        {
+            _propertyActionError = ex.Message;
+        }
+        finally
+        {
+            _deletingBuildingId = null;
+        }
+    }
+
+    private async Task HandleDeleteUnitAsync(UnitEntity unit)
+    {
+        if (_deletingUnitId.HasValue)
+            return;
+
+        _propertyActionError = null;
+        try
+        {
+            var confirmed = await JS.InvokeAsync<bool>(
+                "confirm",
+                $"Delete unit {unit.UnitNumber} in {unit.BuildingName}? Units with tenancy, invite, utility meter, or work-order history cannot be deleted.");
+            if (!confirmed)
+                return;
+
+            if (_currentUser?.Role != UserRole.Landlord ||
+                !Guid.TryParse(_currentUser.Id, out var landlordId))
+            {
+                throw new InvalidOperationException("A signed-in landlord account is required to delete a unit.");
+            }
+
+            _deletingUnitId = unit.Id;
+            await PropertyService.DeleteUnitAsync(landlordId, unit.Id);
+            await LoadLandlordDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _propertyActionError = ex.Message;
+        }
+        finally
+        {
+            _deletingUnitId = null;
+        }
+    }
+
+    private async Task HandleRemoveTenantAsync(TenancyEntity tenancy, Guid tenantId, bool isPrimaryTenant)
+    {
+        if (_updatingTenancyId.HasValue)
+            return;
+
+        _propertyActionError = null;
+        try
+        {
+            var action = isPrimaryTenant
+                ? "End this tenancy and remove the primary tenant from the unit? The lease history will be preserved."
+                : "Remove this co-tenant from the unit? The primary tenant and lease will remain unchanged.";
+            var confirmed = await JS.InvokeAsync<bool>("confirm", action);
+            if (!confirmed)
+                return;
+
+            if (_currentUser?.Role != UserRole.Landlord ||
+                !Guid.TryParse(_currentUser.Id, out var landlordId))
+            {
+                throw new InvalidOperationException("A signed-in landlord account is required to remove a tenant.");
+            }
+
+            _updatingTenancyId = tenancy.Id;
+            await PropertyService.RemoveTenantFromUnitAsync(landlordId, tenancy.Id, tenantId);
+            await LoadLandlordDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _propertyActionError = ex.Message;
+        }
+        finally
+        {
+            _updatingTenancyId = null;
+        }
     }
 
     private async Task HandleCreateUnitAsync()
@@ -951,6 +1400,7 @@ private bool _isLoading = true;
         if (_isCreatingUnit)
             return;
 
+        _unitError = null;
         _isCreatingUnit = true;
         try
         {
@@ -961,9 +1411,8 @@ private bool _isLoading = true;
             var unit = new UnitEntity
             {
                 LandlordId = landlordId,
+                BuildingId = _unitModel.BuildingId,
                 UnitNumber = _unitModel.UnitNumber,
-                BuildingName = _unitModel.BuildingName,
-                StreetAddress = _unitModel.StreetAddress,
                 MonthlyRent = _unitModel.MonthlyRent,
                 DepositAmount = _unitModel.DepositAmount,
                 CreatedAt = DateTime.UtcNow
@@ -972,6 +1421,10 @@ private bool _isLoading = true;
             await PropertyService.CreateUnitAsync(unit);
             _showAddUnitModal = false;
             await LoadLandlordDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _unitError = ex.Message;
         }
         finally
         {

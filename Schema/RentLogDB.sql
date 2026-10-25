@@ -24,9 +24,19 @@ CREATE TABLE public.contractor_profiles (
   CONSTRAINT contractor_profiles_pkey PRIMARY KEY (id),
   CONSTRAINT contractor_profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
+CREATE TABLE public.buildings (
+  buildingid integer GENERATED ALWAYS AS IDENTITY NOT NULL,
+  landlordid uuid NOT NULL,
+  name character varying NOT NULL,
+  address character varying,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT buildings_pkey PRIMARY KEY (buildingid),
+  CONSTRAINT buildings_landlordid_fkey FOREIGN KEY (landlordid) REFERENCES public.users(id)
+);
 CREATE TABLE public.units (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   landlord_id uuid NOT NULL,
+  building_id integer NOT NULL,
   unit_number text NOT NULL,
   building_name text NOT NULL,
   street_address text NOT NULL,
@@ -34,7 +44,8 @@ CREATE TABLE public.units (
   deposit_amount numeric NOT NULL,
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT units_pkey PRIMARY KEY (id),
-  CONSTRAINT units_landlord_id_fkey FOREIGN KEY (landlord_id) REFERENCES public.users(id)
+  CONSTRAINT units_landlord_id_fkey FOREIGN KEY (landlord_id) REFERENCES public.users(id),
+  CONSTRAINT units_building_id_fkey FOREIGN KEY (building_id) REFERENCES public.buildings(buildingid)
 );
 CREATE TABLE public.tenancies (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -94,6 +105,7 @@ CREATE TABLE public.utility_tokens (
 CREATE TABLE public.work_orders (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   unit_id uuid NOT NULL,
+  building_id integer NOT NULL,
   logged_by_id uuid NOT NULL,
   assigned_contractor_id uuid,
   category text NOT NULL,
@@ -105,6 +117,7 @@ CREATE TABLE public.work_orders (
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT work_orders_pkey PRIMARY KEY (id),
   CONSTRAINT work_orders_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES public.units(id),
+  CONSTRAINT work_orders_building_id_fkey FOREIGN KEY (building_id) REFERENCES public.buildings(buildingid),
   CONSTRAINT work_orders_logged_by_id_fkey FOREIGN KEY (logged_by_id) REFERENCES public.users(id),
   CONSTRAINT work_orders_assigned_contractor_id_fkey FOREIGN KEY (assigned_contractor_id) REFERENCES public.contractor_profiles(id)
 );

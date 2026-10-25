@@ -39,6 +39,10 @@ The application is structured around three core user roles:
 - **Database:** PostgreSQL (Supabase) via EF Core / Direct Client
 - **Authentication:** Role-Based Access Control (`TENANT`, `LANDLORD`, `CONTRACTOR`)
 
+Apply `Schema/buildings_work_orders_migration.sql` and
+`Schema/contractor_job_dispatch_lookup.sql` in the Supabase SQL Editor to enable
+work-order access and the PIN-validated lookup used by contractor dispatch links.
+
 ---
 
 ## Getting Started

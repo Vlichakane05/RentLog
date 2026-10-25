@@ -131,7 +131,7 @@ public class MakePaymentViewModel
     public string Description { get; set; } = "Monthly Rent Payment";
 
     [Required(ErrorMessage = "Payment method is required.")]
-    public string Method { get; set; } = "EFT";
+    public string Method { get; set; } = "MANUAL_EFT";
 }
 
 public class PurchaseTokenViewModel
@@ -169,11 +169,8 @@ public class CreateUnitViewModel
     [Required(ErrorMessage = "Unit number is required.")]
     public string UnitNumber { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Building name is required.")]
-    public string BuildingName { get; set; } = string.Empty;
-
-    [Required(ErrorMessage = "Street address is required.")]
-    public string StreetAddress { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Please select a building.")]
+    public int BuildingId { get; set; }
 
     [Required(ErrorMessage = "Monthly rent is required.")]
     [Range(1, 1000000, ErrorMessage = "Rent must be greater than zero.")]
@@ -182,6 +179,17 @@ public class CreateUnitViewModel
     [Required(ErrorMessage = "Deposit amount is required.")]
     [Range(0, 1000000, ErrorMessage = "Deposit cannot be negative.")]
     public decimal DepositAmount { get; set; }
+}
+
+public class CreateBuildingViewModel
+{
+    [Required(ErrorMessage = "Building name is required.")]
+    [StringLength(150, ErrorMessage = "Building name must be 150 characters or fewer.")]
+    public string Name { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Street address is required.")]
+    [StringLength(300, ErrorMessage = "Address must be 300 characters or fewer.")]
+    public string Address { get; set; } = string.Empty;
 }
 
 public class AddContractorViewModel
@@ -208,4 +216,3 @@ public class AddContractorViewModel
 
     public bool IsVerified { get; set; } = true;
 }
-

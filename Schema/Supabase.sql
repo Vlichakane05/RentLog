@@ -5,9 +5,11 @@ create table if not exists public.users (
     id uuid primary key references auth.users(id) on delete cascade,
     email text not null unique,
     full_name text not null,
+    phone_number text,
     role text not null default 'tenant' check (role in ('tenant', 'landlord')),
     created_at timestamptz not null default now()
 );
+alter table public.users add column if not exists phone_number text;
 
 create table if not exists public.properties (
     id uuid primary key default gen_random_uuid(),
@@ -249,15 +251,23 @@ language plpgsql security definer
 set search_path = ''
 as $$
 begin
-    insert into public.users (id, email, full_name, role)
+    insert into public.users as existing_profile (id, email, full_name, phone_number, role)
     values (
         new.id,
         coalesce(new.email, ''),
         coalesce(nullif(new.raw_user_meta_data ->> 'full_name', ''), split_part(coalesce(new.email, 'Tenant'), '@', 1)),
-        'tenant'
+        nullif(new.raw_user_meta_data ->> 'phone_number', ''),
+        case when lower(new.raw_user_meta_data ->> 'role') = 'landlord' then 'landlord' else 'tenant' end
     )
     on conflict (id) do update
-        set email = excluded.email;
+        set email = excluded.email,
+            full_name = coalesce(nullif(new.raw_user_meta_data ->> 'full_name', ''), existing_profile.full_name),
+            phone_number = coalesce(nullif(new.raw_user_meta_data ->> 'phone_number', ''), existing_profile.phone_number),
+            role = case
+                when lower(new.raw_user_meta_data ->> 'role') in ('tenant', 'landlord')
+                    then lower(new.raw_user_meta_data ->> 'role')
+                else existing_profile.role
+            end;
     return new;
 end;
 $$;

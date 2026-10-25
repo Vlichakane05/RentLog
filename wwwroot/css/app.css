@@ -21,6 +21,239 @@ body {
     transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
+.financial-report-print {
+    display: none;
+}
+
+html[data-theme="light"] .tenant-dashboard-shell,
+html[data-theme="light"] .landlord-dashboard-shell {
+    --color-white: #111827;
+    --color-slate-50: #ffffff;
+    --color-slate-100: #111827;
+    --color-slate-200: #1f2937;
+    --color-slate-300: #374151;
+    --color-slate-400: #465264;
+    --color-slate-500: #667185;
+    --color-slate-600: #d7dce3;
+    --color-slate-700: #d7dce3;
+    --color-slate-800: #eef1f5;
+    --color-slate-900: #ffffff;
+    --color-slate-950: #f5f7fa;
+    --dashboard-amber-300: #92400e;
+    --dashboard-amber-400: #92400e;
+    --dashboard-amber-500: #92400e;
+    --dashboard-blue-300: #1d4ed8;
+    --dashboard-blue-400: #1d4ed8;
+    --dashboard-emerald-300: #166534;
+    --dashboard-emerald-400: #166534;
+    --dashboard-indigo-300: #4338ca;
+    --dashboard-indigo-400: #4338ca;
+    --dashboard-indigo-500: #4338ca;
+    --dashboard-rose-300: #be123c;
+    --dashboard-rose-400: #be123c;
+}
+
+@media (prefers-color-scheme: light) {
+    html:not([data-theme="dark"]) .tenant-dashboard-shell,
+    html:not([data-theme="dark"]) .landlord-dashboard-shell {
+        --color-white: #111827;
+        --color-slate-50: #ffffff;
+        --color-slate-100: #111827;
+        --color-slate-200: #1f2937;
+        --color-slate-300: #374151;
+        --color-slate-400: #465264;
+        --color-slate-500: #667185;
+        --color-slate-600: #d7dce3;
+        --color-slate-700: #d7dce3;
+        --color-slate-800: #eef1f5;
+        --color-slate-900: #ffffff;
+        --color-slate-950: #f5f7fa;
+        --dashboard-amber-300: #92400e;
+        --dashboard-amber-400: #92400e;
+        --dashboard-amber-500: #92400e;
+        --dashboard-blue-300: #1d4ed8;
+        --dashboard-blue-400: #1d4ed8;
+        --dashboard-emerald-300: #166534;
+        --dashboard-emerald-400: #166534;
+        --dashboard-indigo-300: #4338ca;
+        --dashboard-indigo-400: #4338ca;
+        --dashboard-indigo-500: #4338ca;
+        --dashboard-rose-300: #be123c;
+        --dashboard-rose-400: #be123c;
+    }
+}
+
+.tenant-dashboard-shell [class~="text-white"],
+.landlord-dashboard-shell [class~="text-white"] {
+    color: var(--color-white, #fff);
+}
+
+.tenant-dashboard-shell button[class~="text-white"],
+.landlord-dashboard-shell button[class~="text-white"],
+.tenant-dashboard-shell button [class~="text-white"],
+.landlord-dashboard-shell button [class~="text-white"] {
+    color: #fff;
+}
+
+.landlord-dashboard-shell [class~="text-slate-950"] {
+    color: #111827;
+}
+
+.tenant-dashboard-shell [class~="text-amber-300"],
+.landlord-dashboard-shell [class~="text-amber-300"] {
+    color: var(--dashboard-amber-300, var(--color-amber-300));
+}
+
+.tenant-dashboard-shell [class~="text-amber-400"],
+.landlord-dashboard-shell [class~="text-amber-400"] {
+    color: var(--dashboard-amber-400, var(--color-amber-400));
+}
+
+.tenant-dashboard-shell [class~="text-amber-500"],
+.landlord-dashboard-shell [class~="text-amber-500"] {
+    color: var(--dashboard-amber-500, var(--color-amber-500));
+}
+
+.tenant-dashboard-shell [class~="text-blue-300"],
+.landlord-dashboard-shell [class~="text-blue-300"] {
+    color: var(--dashboard-blue-300, var(--color-blue-300));
+}
+
+.tenant-dashboard-shell [class~="text-blue-400"],
+.landlord-dashboard-shell [class~="text-blue-400"] {
+    color: var(--dashboard-blue-400, var(--color-blue-400));
+}
+
+.tenant-dashboard-shell [class~="text-emerald-300"],
+.landlord-dashboard-shell [class~="text-emerald-300"] {
+    color: var(--dashboard-emerald-300, var(--color-emerald-300));
+}
+
+.tenant-dashboard-shell [class~="text-emerald-400"],
+.landlord-dashboard-shell [class~="text-emerald-400"] {
+    color: var(--dashboard-emerald-400, var(--color-emerald-400));
+}
+
+.tenant-dashboard-shell [class~="text-indigo-300"],
+.landlord-dashboard-shell [class~="text-indigo-300"] {
+    color: var(--dashboard-indigo-300, var(--color-indigo-300));
+}
+
+.tenant-dashboard-shell [class~="text-indigo-400"],
+.landlord-dashboard-shell [class~="text-indigo-400"] {
+    color: var(--dashboard-indigo-400, var(--color-indigo-400));
+}
+
+.tenant-dashboard-shell [class~="text-indigo-500"],
+.landlord-dashboard-shell [class~="text-indigo-500"] {
+    color: var(--dashboard-indigo-500, var(--color-indigo-500));
+}
+
+.tenant-dashboard-shell [class~="text-rose-300"],
+.landlord-dashboard-shell [class~="text-rose-300"] {
+    color: var(--dashboard-rose-300, var(--color-rose-300));
+}
+
+.tenant-dashboard-shell [class~="text-rose-400"],
+.landlord-dashboard-shell [class~="text-rose-400"] {
+    color: var(--dashboard-rose-400, var(--color-rose-400));
+}
+
+@media print {
+    @page {
+        size: landscape;
+        margin: 12mm;
+    }
+
+    body {
+        background: #fff !important;
+        color: #111 !important;
+    }
+
+    .financial-report-screen {
+        display: none !important;
+    }
+
+    .financial-report-print {
+        display: block !important;
+        color: #111;
+        font-family: Arial, sans-serif;
+        font-size: 9pt;
+    }
+
+    .financial-report-print h1 {
+        margin-bottom: 4pt;
+        font-size: 20pt;
+    }
+
+    .financial-report-print h2 {
+        margin: 0 0 4pt;
+        font-size: 10pt;
+    }
+
+    .financial-report-print p {
+        margin: 0 0 8pt;
+    }
+
+    .financial-report-meta {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8pt;
+        margin: 12pt 0;
+    }
+
+    .financial-report-meta dt {
+        color: #555;
+        font-weight: 700;
+    }
+
+    .financial-report-meta dd {
+        margin: 2pt 0 0;
+    }
+
+    .financial-report-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8pt;
+        margin: 12pt 0;
+    }
+
+    .financial-report-summary > div {
+        min-width: 110pt;
+        padding: 7pt;
+        border: 1px solid #bbb;
+    }
+
+    .financial-report-print table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 7.5pt;
+    }
+
+    .financial-report-print th,
+    .financial-report-print td {
+        padding: 5pt 4pt;
+        border: 1px solid #bbb;
+        text-align: left;
+        vertical-align: top;
+        overflow-wrap: anywhere;
+    }
+
+    .financial-report-print th {
+        background: #eee !important;
+        print-color-adjust: exact;
+    }
+
+    .financial-report-print tr {
+        break-inside: avoid;
+    }
+
+    .financial-report-amount {
+        text-align: right !important;
+        white-space: nowrap;
+    }
+}
+
 /* ---- Typography ---- */
 h1, h2, h3, h4 {
     margin: 0 0 var(--space-3);

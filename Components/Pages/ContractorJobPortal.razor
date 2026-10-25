@@ -7,7 +7,6 @@
 @using System.Linq
 @using Microsoft.AspNetCore.WebUtilities
 @inject IPropertyManagementService PropertyService
-@inject IAuthService AuthService
 @inject NavigationManager Navigation
 
 <PageTitle>Express Contractor Job Portal - RentLog</PageTitle>
@@ -74,8 +73,16 @@
     else if (_workOrder == null)
     {
         <div class="p-10 text-center bg-slate-900 border border-slate-800 rounded-2xl">
-            <h3 class="text-lg font-bold text-white">Work Order Not Found</h3>
-            <p class="text-sm text-slate-400 mt-1">This job dispatch link may have expired or is invalid.</p>
+            @if (_loadError != null)
+            {
+                <h3 class="text-lg font-bold text-white">Unable to Load Work Order</h3>
+                <p class="text-sm text-slate-400 mt-1">@_loadError</p>
+            }
+            else
+            {
+                <h3 class="text-lg font-bold text-white">Work Order Not Found</h3>
+                <p class="text-sm text-slate-400 mt-1">This job dispatch link may have expired or is invalid.</p>
+            }
         </div>
     }
     else
@@ -317,24 +324,16 @@
     private string _uploadProofType = "BEFORE_PHOTO";
     private string? _uploadPreviewUrl;
     private string? _notificationMessage;
+    private string? _dispatchPin;
+    private string? _loadError;
 
     protected override async Task OnInitializedAsync()
     {
-        // Check for PIN in query string and attempt auto-login for contractor
         var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
         var query = QueryHelpers.ParseQuery(uri.Query);
         if (query.TryGetValue("pin", out var pinValues))
         {
-            var pin = pinValues.FirstOrDefault();
-            if (!string.IsNullOrEmpty(pin))
-            {
-                var authUser = await AuthService.LoginContractorWithPinAsync(pin);
-                if (authUser == null)
-                {
-                    _notificationMessage = "Invalid or expired PIN.";
-                }
-                // else, authentication succeeded – current user set within AuthService.
-            }
+            _dispatchPin = pinValues.FirstOrDefault() ?? string.Empty;
         }
 
         await LoadJobDataAsync();
@@ -343,9 +342,17 @@
     private async Task LoadJobDataAsync()
     {
         _isLoading = true;
+        _loadError = null;
         try
         {
-            _workOrder = await PropertyService.GetWorkOrderByIdAsync(WorkOrderId);
+            _workOrder = _dispatchPin is null
+                ? await PropertyService.GetWorkOrderByIdAsync(WorkOrderId)
+                : await PropertyService.GetContractorWorkOrderByDispatchPinAsync(WorkOrderId, _dispatchPin);
+            if (_dispatchPin is not null && _workOrder is null)
+            {
+                _notificationMessage = "Invalid or expired PIN.";
+            }
+
             if (_workOrder != null)
             {
                 _unit = await PropertyService.GetUnitByIdAsync(_workOrder.UnitId);
@@ -372,6 +379,7 @@
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading contractor job: {ex.Message}");
+            _loadError = "The job could not be loaded. Please try again or contact the landlord.";
         }
         finally
         {

@@ -57,6 +57,25 @@ public class ContractorProfileEntity : BaseModel
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
+[Table("buildings")]
+public class BuildingEntity : BaseModel
+{
+    [PrimaryKey("buildingid", false)]
+    public int Id { get; set; }
+
+    [Column("landlordid")]
+    public Guid LandlordId { get; set; }
+
+    [Column("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [Column("address")]
+    public string Address { get; set; } = string.Empty;
+
+    [Column("created_at")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
+
 [Table("units")]
 public class UnitEntity : BaseModel
 {
@@ -65,6 +84,9 @@ public class UnitEntity : BaseModel
 
     [Column("landlord_id")]
     public Guid LandlordId { get; set; }
+
+    [Column("building_id")]
+    public int BuildingId { get; set; }
 
     [Column("unit_number")]
     public string UnitNumber { get; set; } = string.Empty;
@@ -177,7 +199,7 @@ public class PaymentEntity : BaseModel
     public string Description { get; set; } = string.Empty;
 
     [Column("method")]
-    public string Method { get; set; } = "EFT";
+    public string Method { get; set; } = "MANUAL_EFT";
 
     [Column("status")]
     public string Status { get; set; } = "PENDING";
@@ -241,6 +263,9 @@ public class WorkOrderEntity : BaseModel
 
     [Column("unit_id")]
     public Guid UnitId { get; set; }
+
+    [Column("building_id")]
+    public int BuildingId { get; set; }
 
     [Column("logged_by_id")]
     public Guid LoggedById { get; set; }

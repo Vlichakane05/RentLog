@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using RentLog.Models;
@@ -25,95 +26,55 @@ public sealed class SupabaseAuthService : IAuthService
     public async Task<AuthUser?> LoginAsync(string email, string password)
     {
         var cleanEmail = email.Trim();
+        var client = await _clientProvider.GetClientAsync();
+        var session = await client.Auth.SignIn(cleanEmail, password);
+        if (!Guid.TryParse(session?.User?.Id, out var authenticatedUserId))
+            return null;
 
-        // 1. Authenticate with Supabase Auth
-        try
+        var profile = await LoadProfileAsync(client, authenticatedUserId);
+        if (profile != null)
+            return _currentUser = profile;
+
+        var userRow = await _propertyService.GetUserByEmailAsync(cleanEmail);
+        if (userRow == null || userRow.Id != authenticatedUserId)
+            return null;
+
+        var role = ParseUserRole(userRow.Role);
+        return _currentUser = new AuthUser
         {
-            var client = await _clientProvider.GetClientAsync();
-            var session = await client.Auth.SignIn(cleanEmail, password);
-            if (session?.User?.Id != null && Guid.TryParse(session.User.Id, out var parsedUserId))
-            {
-                var profile = await LoadProfileAsync(client, parsedUserId);
-                if (profile != null)
-                {
-                    _currentUser = profile;
-                    return _currentUser;
-                }
-
-                // If user authenticated in Auth but not yet in public.users, create or fetch
-                var userRow = await _propertyService.GetUserByEmailAsync(cleanEmail);
-                if (userRow != null)
-                {
-                    var role = ParseUserRole(userRow.Role);
-                    _currentUser = new AuthUser
-                    {
-                        Id = userRow.Id.ToString(),
-                        Email = userRow.Email,
-                        Name = userRow.FullName,
-                        PhoneNumber = userRow.PhoneNumber,
-                        Role = role
-                    };
-                    return _currentUser;
-                }
-            }
-        }
-        catch
-        {
-            // Fall through to database check
-        }
-
-        // 2. Direct lookup from public.users table in Supabase
-        var dbUser = await _propertyService.GetUserByEmailAsync(cleanEmail);
-        if (dbUser != null)
-        {
-            Enum.TryParse<UserRole>(dbUser.Role, true, out var role);
-            _currentUser = new AuthUser
-            {
-                Id = dbUser.Id.ToString(),
-                Email = dbUser.Email,
-                Name = dbUser.FullName,
-                PhoneNumber = dbUser.PhoneNumber,
-                Role = role
-            };
-            return _currentUser;
-        }
-
-        return null;
+            Id = authenticatedUserId.ToString(),
+            Email = userRow.Email,
+            Name = userRow.FullName,
+            PhoneNumber = userRow.PhoneNumber,
+            Role = role
+        };
     }
 
     public async Task<AuthUser?> SignUpAsync(string fullName, string email, string? phoneNumber, string role, string password)
     {
         var cleanEmail = email.Trim();
         var cleanRole = role.Trim().ToUpperInvariant();
-        var userId = Guid.NewGuid();
-
-        // 1. Attempt Supabase Auth registration
-        try
+        var client = await _clientProvider.GetClientAsync();
+        var session = await client.Auth.SignUp(cleanEmail, password, new Supabase.Gotrue.SignUpOptions
         {
-            var client = await _clientProvider.GetClientAsync();
-            var res = await client.Auth.SignUp(cleanEmail, password);
-            if (res?.User?.Id != null && Guid.TryParse(res.User.Id, out var parsedId))
+            Data = new Dictionary<string, object>
             {
-                userId = parsedId;
+                ["full_name"] = fullName.Trim(),
+                ["phone_number"] = phoneNumber?.Trim() ?? string.Empty,
+                ["role"] = cleanRole.ToLowerInvariant()
             }
-        }
-        catch
-        {
-            // If email confirmation is rate-limited or disabled, persist directly to public.users
-        }
+        });
 
-        // 2. Insert into public.users table in Supabase
-        var newUser = new UserEntity
-        {
-            Id = userId,
-            FullName = fullName.Trim(),
-            Email = cleanEmail,
-            PhoneNumber = phoneNumber?.Trim(),
-            Role = cleanRole,
-            CreatedAt = DateTime.UtcNow
-        };
+        if (!Guid.TryParse(session?.User?.Id, out var userId))
+            throw new InvalidOperationException("Supabase Auth did not return a valid account ID.");
 
-        await _propertyService.CreateUserAsync(newUser);
+        if (!Guid.TryParse(client.Auth.CurrentUser?.Id, out var currentUserId) ||
+            currentUserId != userId ||
+            string.IsNullOrWhiteSpace(client.Auth.CurrentSession?.AccessToken))
+        {
+            throw new InvalidOperationException(
+                "Your account was created, but Supabase did not start a session. Confirm your email, then sign in.");
+        }
 
         var parsedRole = ParseUserRole(cleanRole);
         _currentUser = new AuthUser

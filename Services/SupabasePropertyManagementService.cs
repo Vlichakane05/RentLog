@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using RentLog.Models.Entities;
 using static Supabase.Postgrest.Constants;
@@ -11,10 +12,14 @@ namespace RentLog.Services;
 public class SupabasePropertyManagementService : IPropertyManagementService
 {
     private readonly SupabaseClientProvider _clientProvider;
+    private readonly ILogger<SupabasePropertyManagementService> _logger;
 
-    public SupabasePropertyManagementService(SupabaseClientProvider clientProvider)
+    public SupabasePropertyManagementService(
+        SupabaseClientProvider clientProvider,
+        ILogger<SupabasePropertyManagementService> logger)
     {
         _clientProvider = clientProvider;
+        _logger = logger;
     }
 
     private async Task<Supabase.Client> GetClientAsync() => await _clientProvider.GetClientAsync();
@@ -156,6 +161,150 @@ public class SupabasePropertyManagementService : IPropertyManagementService
     // ==========================================
     // 3. Units (public.units)
     // ==========================================
+    public async Task<IReadOnlyList<BuildingEntity>> GetBuildingsAsync(Guid landlordId)
+    {
+        var client = await GetClientAsync();
+        var res = await client.From<BuildingEntity>()
+            .Filter("landlordid", Operator.Equals, landlordId.ToString())
+            .Get();
+        return res.Models.OrderBy(building => building.Name).ToList();
+    }
+
+    public async Task CreateBuildingAsync(BuildingEntity building)
+    {
+        if (building.LandlordId == Guid.Empty)
+            throw new ArgumentException("A building must belong to a landlord.", nameof(building));
+
+        building.Name = building.Name.Trim();
+        building.Address = building.Address.Trim();
+        if (string.IsNullOrWhiteSpace(building.Name) || string.IsNullOrWhiteSpace(building.Address))
+            throw new ArgumentException("A building name and address are required.", nameof(building));
+
+        building.CreatedAt = DateTime.UtcNow;
+        var client = await GetClientAsync();
+        var authUserId = client.Auth.CurrentUser?.Id;
+        if (!Guid.TryParse(authUserId, out var authenticatedUserId))
+        {
+            throw new InvalidOperationException(
+                "Supabase has no authenticated user for this request. Sign out and sign in again before creating a building.");
+        }
+
+        if (authenticatedUserId != building.LandlordId)
+        {
+            throw new InvalidOperationException(
+                $"The landlord profile ID ({building.LandlordId}) does not match the signed-in Supabase user ID ({authenticatedUserId}). Sign in with the Auth account linked to this landlord profile.");
+        }
+
+        var accessToken = client.Auth.CurrentSession?.AccessToken;
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            throw new InvalidOperationException(
+                "The Supabase account has no active access token. Sign out and sign in again before creating a building.");
+        }
+
+        var (tokenSubject, tokenRole) = ReadJwtIdentity(accessToken);
+        if (!Guid.TryParse(tokenSubject, out var tokenUserId) || tokenUserId != authenticatedUserId)
+        {
+            throw new InvalidOperationException(
+                "The Supabase access token belongs to a different account than the signed-in profile. Sign out, sign in again, and retry.");
+        }
+
+        if (!string.Equals(tokenRole, "authenticated", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"The Supabase access token role is '{tokenRole ?? "missing"}', not 'authenticated'. Sign out, sign in again, and retry.");
+        }
+
+        _logger.LogInformation(
+            "Creating building with landlord ID {LandlordId}; Supabase Auth user ID and access-token subject match {AuthUserId}; token role is {TokenRole}.",
+            building.LandlordId,
+            authenticatedUserId,
+            tokenRole);
+
+        try
+        {
+            await client.From<BuildingEntity>().Insert(
+                building,
+                new Supabase.Postgrest.QueryOptions
+                {
+                    Returning = Supabase.Postgrest.QueryOptions.ReturnType.Minimal
+                });
+        }
+        catch (Supabase.Postgrest.Exceptions.PostgrestException ex)
+        {
+            _logger.LogError(
+                ex,
+                "Supabase rejected building insert for landlord ID {LandlordId}; client Auth user ID and token subject matched {AuthUserId}; token role was {TokenRole}.",
+                building.LandlordId,
+                authenticatedUserId,
+                tokenRole);
+            throw new InvalidOperationException(
+                $"Supabase rejected the building insert with an RLS error. The landlord ID and authenticated token subject match ({authenticatedUserId}), and the token role is '{tokenRole}'. Check the live buildings INSERT policy and is_current_user_landlord() function. Supabase said: {ex.Message}",
+                ex);
+        }
+    }
+
+    public async Task DeleteBuildingAsync(Guid landlordId, int buildingId)
+    {
+        var client = await GetClientAsync();
+        EnsureLandlordSession(client, landlordId);
+
+        var building = (await client.From<BuildingEntity>()
+            .Filter("buildingid", Operator.Equals, buildingId.ToString())
+            .Filter("landlordid", Operator.Equals, landlordId.ToString())
+            .Get()).Models.FirstOrDefault();
+        if (building is null)
+            throw new InvalidOperationException("The building could not be found for this landlord.");
+
+        var units = (await client.From<UnitEntity>()
+            .Filter("building_id", Operator.Equals, buildingId.ToString())
+            .Get()).Models;
+        if (units.Count > 0)
+            throw new InvalidOperationException("Remove all units from this building before deleting it.");
+
+        await client.From<BuildingEntity>()
+            .Filter("buildingid", Operator.Equals, buildingId.ToString())
+            .Filter("landlordid", Operator.Equals, landlordId.ToString())
+            .Delete(new Supabase.Postgrest.QueryOptions
+            {
+                Returning = Supabase.Postgrest.QueryOptions.ReturnType.Minimal
+            });
+
+        var remaining = (await client.From<BuildingEntity>()
+            .Filter("buildingid", Operator.Equals, buildingId.ToString())
+            .Filter("landlordid", Operator.Equals, landlordId.ToString())
+            .Get()).Models.FirstOrDefault();
+        if (remaining is not null)
+            throw new InvalidOperationException("Supabase did not delete the building. Check the buildings DELETE policy.");
+    }
+
+    private static (string? Subject, string? Role) ReadJwtIdentity(string accessToken)
+    {
+        var segments = accessToken.Split('.');
+        if (segments.Length != 3)
+            return (null, null);
+
+        var payload = segments[1].Replace('-', '+').Replace('_', '/');
+        payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
+
+        try
+        {
+            using var document = JsonDocument.Parse(Convert.FromBase64String(payload));
+            var root = document.RootElement;
+            var subject = root.TryGetProperty("sub", out var sub) ? sub.GetString() : null;
+            var role = root.TryGetProperty("role", out var roleClaim) ? roleClaim.GetString() : null;
+            return (subject, role);
+        }
+        catch (FormatException)
+        {
+            return (null, null);
+        }
+        catch (JsonException)
+        {
+            return (null, null);
+        }
+    }
+
     public async Task<IReadOnlyList<UnitEntity>> GetUnitsAsync(Guid? landlordId = null)
     {
         var client = await GetClientAsync();
@@ -179,10 +328,68 @@ public class SupabasePropertyManagementService : IPropertyManagementService
 
     public async Task<UnitEntity> CreateUnitAsync(UnitEntity unit)
     {
-        if (unit.Id == Guid.Empty) unit.Id = Guid.NewGuid();
+        if (unit.BuildingId <= 0)
+            throw new ArgumentException("A unit must belong to a building.", nameof(unit));
+
         var client = await GetClientAsync();
+        var building = (await client.From<BuildingEntity>()
+            .Filter("buildingid", Operator.Equals, unit.BuildingId.ToString())
+            .Get()).Models.FirstOrDefault()
+            ?? throw new InvalidOperationException("The selected building could not be found.");
+        if (building.LandlordId != unit.LandlordId)
+            throw new InvalidOperationException("The selected building does not belong to this landlord.");
+
+        if (unit.Id == Guid.Empty) unit.Id = Guid.NewGuid();
+        unit.BuildingName = building.Name;
+        unit.StreetAddress = building.Address;
         var res = await client.From<UnitEntity>().Insert(unit);
         return res.Models.FirstOrDefault() ?? unit;
+    }
+
+    public async Task DeleteUnitAsync(Guid landlordId, Guid unitId)
+    {
+        var client = await GetClientAsync();
+        EnsureLandlordSession(client, landlordId);
+
+        var unit = (await client.From<UnitEntity>()
+            .Filter("id", Operator.Equals, unitId.ToString())
+            .Filter("landlord_id", Operator.Equals, landlordId.ToString())
+            .Get()).Models.FirstOrDefault();
+        if (unit is null)
+            throw new InvalidOperationException("The unit could not be found for this landlord.");
+
+        var hasTenancies = (await client.From<TenancyEntity>()
+            .Filter("unit_id", Operator.Equals, unitId.ToString())
+            .Get()).Models.Count > 0;
+        var hasInvites = (await client.From<TenancyInviteEntity>()
+            .Filter("unit_id", Operator.Equals, unitId.ToString())
+            .Get()).Models.Count > 0;
+        var hasMeters = (await client.From<UtilityMeterEntity>()
+            .Filter("unit_id", Operator.Equals, unitId.ToString())
+            .Get()).Models.Count > 0;
+        var hasWorkOrders = (await client.From<WorkOrderEntity>()
+            .Filter("unit_id", Operator.Equals, unitId.ToString())
+            .Get()).Models.Count > 0;
+        if (hasTenancies || hasInvites || hasMeters || hasWorkOrders)
+        {
+            throw new InvalidOperationException(
+                "This unit has tenancy, invite, utility meter, or work-order history and cannot be deleted.");
+        }
+
+        await client.From<UnitEntity>()
+            .Filter("id", Operator.Equals, unitId.ToString())
+            .Filter("landlord_id", Operator.Equals, landlordId.ToString())
+            .Delete(new Supabase.Postgrest.QueryOptions
+            {
+                Returning = Supabase.Postgrest.QueryOptions.ReturnType.Minimal
+            });
+
+        var remaining = (await client.From<UnitEntity>()
+            .Filter("id", Operator.Equals, unitId.ToString())
+            .Filter("landlord_id", Operator.Equals, landlordId.ToString())
+            .Get()).Models.FirstOrDefault();
+        if (remaining is not null)
+            throw new InvalidOperationException("Supabase did not delete the unit. Check the units DELETE policy.");
     }
 
     public async Task<UnitEntity> UpdateUnitAsync(UnitEntity unit)
@@ -211,10 +418,11 @@ public class SupabasePropertyManagementService : IPropertyManagementService
             .Filter("tenant_id", Operator.Equals, tenantId.ToString())
             .Get();
 
-        var co = coRes.Models.FirstOrDefault();
-        if (co != null)
+        foreach (var co in coRes.Models)
         {
-            return await GetTenancyByIdAsync(co.TenancyId);
+            var tenancy = await GetTenancyByIdAsync(co.TenancyId);
+            if (tenancy?.IsActive == true)
+                return tenancy;
         }
 
         return null;
@@ -274,6 +482,74 @@ public class SupabasePropertyManagementService : IPropertyManagementService
         return res.Models;
     }
 
+    public async Task RemoveTenantFromUnitAsync(Guid landlordId, Guid tenancyId, Guid tenantId)
+    {
+        var client = await GetClientAsync();
+        EnsureLandlordSession(client, landlordId);
+
+        var tenancy = await GetTenancyByIdAsync(tenancyId);
+        if (tenancy is null)
+            throw new InvalidOperationException("The tenancy could not be found for this landlord.");
+
+        var unit = (await client.From<UnitEntity>()
+            .Filter("id", Operator.Equals, tenancy.UnitId.ToString())
+            .Filter("landlord_id", Operator.Equals, landlordId.ToString())
+            .Get()).Models.FirstOrDefault();
+        if (unit is null)
+            throw new InvalidOperationException("The tenancy does not belong to this landlord.");
+
+        if (tenancy.PrimaryTenantId == tenantId)
+        {
+            var endDate = DateTime.UtcNow.Date < tenancy.StartDate.Date
+                ? tenancy.StartDate.Date
+                : DateTime.UtcNow.Date;
+            await client.From<TenancyEntity>()
+                .Filter("id", Operator.Equals, tenancyId.ToString())
+                .Set(row => row.IsActive, false)
+                .Set(row => row.EndDate, endDate)
+                .Update(new Supabase.Postgrest.QueryOptions
+                {
+                    Returning = Supabase.Postgrest.QueryOptions.ReturnType.Minimal
+                });
+
+            var updated = await GetTenancyByIdAsync(tenancyId);
+            if (updated is null || updated.IsActive)
+                throw new InvalidOperationException("Supabase did not end the tenancy. Check the tenancies UPDATE policy.");
+            return;
+        }
+
+        var coTenant = (await client.From<TenancyCoTenantEntity>()
+            .Filter("tenancy_id", Operator.Equals, tenancyId.ToString())
+            .Filter("tenant_id", Operator.Equals, tenantId.ToString())
+            .Get()).Models.FirstOrDefault();
+        if (coTenant is null)
+            throw new InvalidOperationException("The tenant is not assigned to this tenancy.");
+
+        await client.From<TenancyCoTenantEntity>()
+            .Filter("tenancy_id", Operator.Equals, tenancyId.ToString())
+            .Filter("tenant_id", Operator.Equals, tenantId.ToString())
+            .Delete(new Supabase.Postgrest.QueryOptions
+            {
+                Returning = Supabase.Postgrest.QueryOptions.ReturnType.Minimal
+            });
+
+        var remainingCoTenant = (await client.From<TenancyCoTenantEntity>()
+            .Filter("tenancy_id", Operator.Equals, tenancyId.ToString())
+            .Filter("tenant_id", Operator.Equals, tenantId.ToString())
+            .Get()).Models.FirstOrDefault();
+        if (remainingCoTenant is not null)
+            throw new InvalidOperationException("Supabase did not remove the tenant. Check the tenancy co-tenant DELETE policy.");
+    }
+
+    private static void EnsureLandlordSession(Supabase.Client client, Guid landlordId)
+    {
+        if (!Guid.TryParse(client.Auth.CurrentUser?.Id, out var currentUserId) ||
+            currentUserId != landlordId)
+        {
+            throw new InvalidOperationException("The requested property does not belong to the signed-in landlord.");
+        }
+    }
+
     // ==========================================
     // 6. Payments (public.payments)
     // ==========================================
@@ -298,16 +574,50 @@ public class SupabasePropertyManagementService : IPropertyManagementService
     public async Task<IReadOnlyList<PaymentEntity>> GetAllPaymentsAsync(Guid? landlordId = null)
     {
         var client = await GetClientAsync();
-        var res = await client.From<PaymentEntity>().Get();
-        return res.Models.OrderByDescending(p => p.CreatedAt).ToList();
+        if (landlordId is not { } ownerId || ownerId == Guid.Empty)
+        {
+            var allPayments = await client.From<PaymentEntity>().Get();
+            return allPayments.Models.OrderByDescending(payment => payment.CreatedAt).ToList();
+        }
+
+        EnsureLandlordSession(client, ownerId);
+        var tenancies = await GetTenanciesAsync(ownerId);
+        var payments = new List<PaymentEntity>();
+        foreach (var tenancy in tenancies)
+        {
+            payments.AddRange(await GetPaymentsForTenancyAsync(tenancy.Id));
+        }
+
+        return payments
+            .DistinctBy(payment => payment.Id)
+            .OrderByDescending(payment => payment.CreatedAt)
+            .ToList();
     }
 
     public async Task<PaymentEntity> RecordPaymentAsync(PaymentEntity payment)
     {
+        if (payment.Amount <= 0)
+            throw new ArgumentOutOfRangeException(nameof(payment), "Payment amount must be greater than zero.");
+        if (string.IsNullOrWhiteSpace(payment.Description))
+            throw new ArgumentException("Payment description is required.", nameof(payment));
+        if (payment.Method is not ("MANUAL_EFT" or "INSTANT_EFT" or "DEBICHECK" or "CARD"))
+            throw new ArgumentException("Select a payment method supported by the database.", nameof(payment));
+
+        var client = await GetClientAsync();
+        if (!Guid.TryParse(client.Auth.CurrentUser?.Id, out var currentUserId) ||
+            currentUserId != payment.PayerId)
+        {
+            throw new InvalidOperationException("The payment payer must match the signed-in tenant.");
+        }
+
+        var activeTenancy = await GetActiveTenancyForTenantAsync(payment.PayerId);
+        if (activeTenancy?.Id != payment.TenancyId)
+            throw new InvalidOperationException("The payment must belong to the tenant's active tenancy.");
+
         if (payment.Id == Guid.Empty) payment.Id = Guid.NewGuid();
         payment.PaidAt ??= DateTime.UtcNow;
-        payment.Status = "PAID";
-        var client = await GetClientAsync();
+        payment.Status = "SETTLED";
+        payment.GatewayReference = null;
         var res = await client.From<PaymentEntity>().Insert(payment);
         return res.Models.FirstOrDefault() ?? payment;
     }
@@ -369,13 +679,12 @@ public class SupabasePropertyManagementService : IPropertyManagementService
             PayerId = payerId,
             Amount = amount,
             Description = $"Prepaid {(meter?.MeterType ?? "Utility")} Token Purchase",
-            Method = "CREDIT_CARD",
-            Status = "PAID",
-            GatewayReference = $"TOKEN-TXN-{Random.Shared.Next(100000, 999999)}",
+            Method = "CARD",
+            Status = "SETTLED",
             PaidAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow
         };
-        try { await client.From<PaymentEntity>().Insert(payment); } catch { }
+        await client.From<PaymentEntity>().Insert(payment);
 
         // 2. Generate 16-digit token code
         var tokenCode = $"{Random.Shared.Next(1000, 9999)}-{Random.Shared.Next(1000, 9999)}-{Random.Shared.Next(1000, 9999)}-{Random.Shared.Next(1000, 9999)}";
@@ -406,9 +715,25 @@ public class SupabasePropertyManagementService : IPropertyManagementService
 
     public async Task<IReadOnlyList<WorkOrderEntity>> GetWorkOrdersForLandlordAsync(Guid landlordId)
     {
+        var buildings = await GetBuildingsAsync(landlordId);
+        if (buildings.Count == 0) return Array.Empty<WorkOrderEntity>();
+
         var client = await GetClientAsync();
-        var res = await client.From<WorkOrderEntity>().Get();
-        return res.Models.OrderByDescending(w => w.CreatedAt).ToList();
+        var workOrders = new List<WorkOrderEntity>();
+        foreach (var building in buildings)
+        {
+            var res = await client.From<WorkOrderEntity>()
+                .Filter("building_id", Operator.Equals, building.Id.ToString())
+                .Get();
+            workOrders.AddRange(res.Models);
+        }
+
+        // Supabase RLS further restricts these rows to work orders reported by
+        // tenants associated with each building's units.
+        return workOrders
+            .DistinctBy(workOrder => workOrder.Id)
+            .OrderByDescending(workOrder => workOrder.CreatedAt)
+            .ToList();
     }
 
     public async Task<IReadOnlyList<WorkOrderEntity>> GetWorkOrdersForContractorAsync(Guid contractorId)
@@ -429,9 +754,20 @@ public class SupabasePropertyManagementService : IPropertyManagementService
         return res.Models.FirstOrDefault();
     }
 
+    public async Task<WorkOrderEntity?> GetContractorWorkOrderByDispatchPinAsync(Guid id, string pin)
+    {
+        var client = await GetClientAsync();
+        return await client.Rpc<WorkOrderEntity>(
+            "get_contractor_work_order_by_dispatch_pin",
+            new { p_work_order_id = id, p_dispatch_pin = pin.Trim() });
+    }
+
     public async Task<WorkOrderEntity> CreateWorkOrderAsync(WorkOrderEntity workOrder)
     {
         if (workOrder.Id == Guid.Empty) workOrder.Id = Guid.NewGuid();
+        var unit = await GetUnitByIdAsync(workOrder.UnitId)
+            ?? throw new InvalidOperationException("The work order unit could not be found.");
+        workOrder.BuildingId = unit.BuildingId;
         workOrder.Status = "LOGGED";
         var client = await GetClientAsync();
         var res = await client.From<WorkOrderEntity>().Insert(workOrder);
@@ -568,7 +904,7 @@ public class SupabasePropertyManagementService : IPropertyManagementService
     public async Task<ContractorInvoiceEntity> ApproveInvoiceAsync(Guid invoiceId, bool isApproved)
     {
         var client = await GetClientAsync();
-        var payout = isApproved ? "PAID" : "REJECTED";
+        var payout = isApproved ? "SETTLED" : "FAILED";
         var res = await client.From<ContractorInvoiceEntity>()
             .Filter("id", Operator.Equals, invoiceId.ToString())
             .Set(x => x.IsApprovedByLandlord, isApproved)

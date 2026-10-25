@@ -9,7 +9,7 @@
 
 <PageTitle>Tenant Portal - RentLog</PageTitle>
 
-<div class="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16">
+<div class="tenant-dashboard-shell min-h-screen bg-slate-950 text-slate-100 font-sans pb-16">
     @Header
 
     @if (_isLoading)
@@ -312,14 +312,13 @@
                                             <td class="py-3 px-4 font-mono text-slate-500">@(payment.GatewayReference ?? "-")</td>
                                             <td class="py-3 px-4 text-right font-bold text-white">R @payment.Amount.ToString("N2")</td>
                                             <td class="py-3 px-4 text-center">
-                                                @if (payment.Status == "PAID")
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold @(payment.Status switch
                                                 {
-                                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">PAID</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">PENDING</span>
-                                                }
+                                                    "SETTLED" => "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30",
+                                                    "FAILED" => "bg-rose-500/20 text-rose-400 border border-rose-500/30",
+                                                    "PROCESSING" => "bg-sky-500/20 text-sky-400 border border-sky-500/30",
+                                                    _ => "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                                                })">@payment.Status</span>
                                             </td>
                                         </tr>
                                     }
@@ -498,10 +497,17 @@
             <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-base font-bold text-white">Make Rental Payment</h3>
-                    <button type="button" @onclick="@(() => _showPaymentModal = false)" class="text-slate-400 hover:text-white">&times;</button>
+                    <button type="button" @onclick="@(() => _showPaymentModal = false)" disabled="@_isActing" class="text-slate-400 hover:text-white disabled:opacity-50">&times;</button>
                 </div>
+                <p class="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
+                    This records the payment in RentLog only. No money is transferred and no payment provider is contacted. Confirming marks the record as settled.
+                </p>
                 <EditForm Model="@_paymentModel" OnValidSubmit="HandleSubmitPaymentAsync" class="space-y-4 text-xs">
                     <DataAnnotationsValidator />
+                    @if (!string.IsNullOrWhiteSpace(_paymentError))
+                    {
+                        <div class="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-rose-300" role="alert">@_paymentError</div>
+                    }
                     <div>
                         <label class="block text-slate-300 font-semibold mb-1">Payment Amount (ZAR)</label>
                         <InputNumber @bind-Value="_paymentModel.Amount" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono text-sm" />
@@ -513,14 +519,15 @@
                     <div>
                         <label class="block text-slate-300 font-semibold mb-1">Payment Method</label>
                         <InputSelect @bind-Value="_paymentModel.Method" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
-                            <option value="EFT">Electronic Funds Transfer (EFT)</option>
-                            <option value="CREDIT_CARD">Credit / Debit Card</option>
-                            <option value="INSTANT_EFT">Instant EFT (Ozow / Stitch)</option>
+                            <option value="MANUAL_EFT">Manual EFT (record only)</option>
+                            <option value="INSTANT_EFT">Instant EFT (record only)</option>
+                            <option value="DEBICHECK">DebiCheck (record only)</option>
+                            <option value="CARD">Card (record only)</option>
                         </InputSelect>
                     </div>
                     <div class="pt-4 flex justify-end space-x-2">
-                        <button type="button" @onclick="@(() => _showPaymentModal = false)" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300">Cancel</button>
-                        <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold">Confirm Payment</button>
+                        <button type="button" @onclick="@(() => _showPaymentModal = false)" disabled="@_isActing" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 disabled:opacity-50">Cancel</button>
+                        <button type="submit" disabled="@_isActing" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold disabled:opacity-50">@(_isActing ? "Recording..." : "Record Payment")</button>
                     </div>
                 </EditForm>
             </div>
@@ -691,6 +698,7 @@
         <h2 class="text-xl font-bold"><span class="text-white">Rent</span><span class="text-indigo-500">Log</span></h2>
         <div class="flex items-center space-x-4">
             <span class="text-slate-300">@(_currentUser?.Name ?? "User")</span>
+            <ThemeToggle />
             <button type="button" @onclick="HandleLogoutAsync"
                     class="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2 text-sm font-semibold text-slate-200 shadow-sm transition-colors hover:border-rose-500 hover:bg-rose-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -735,6 +743,7 @@
     // Modals
     private bool _showPaymentModal;
     private MakePaymentViewModel _paymentModel = new();
+    private string? _paymentError;
 
     private bool _showTokenModal;
     private UtilityMeterEntity? _selectedMeter;
@@ -857,34 +866,55 @@
 
     private void OpenPaymentModal()
     {
+        _paymentError = null;
         _paymentModel = new MakePaymentViewModel
         {
             TenancyId = _activeTenancy?.Id ?? Guid.Empty,
             Amount = _activeUnit?.MonthlyRent ?? 0m,
             Description = "Monthly Rent Payment",
-            Method = "EFT"
+            Method = "MANUAL_EFT"
         };
         _showPaymentModal = true;
     }
 
     private async Task HandleSubmitPaymentAsync()
     {
-        var tenantId = _currentUser != null && Guid.TryParse(_currentUser.Id, out var id) ? id : Guid.Empty;
-        var payment = new PaymentEntity
+        if (_isActing)
+            return;
+
+        _isActing = true;
+        _paymentError = null;
+        try
         {
-            TenancyId = _paymentModel.TenancyId,
-            PayerId = tenantId,
-            Amount = _paymentModel.Amount,
-            Description = _paymentModel.Description,
-            Method = _paymentModel.Method,
-            Status = "PAID",
-            GatewayReference = $"PAY-{DateTime.UtcNow:yyyyMMdd}-{Random.Shared.Next(1000, 9999)}",
-            PaidAt = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow
-        };
-        await PropertyService.RecordPaymentAsync(payment);
-        _showPaymentModal = false;
-        await LoadTenantDataAsync();
+            if (_currentUser?.Role != UserRole.Tenant ||
+                !Guid.TryParse(_currentUser.Id, out var tenantId))
+            {
+                throw new InvalidOperationException("A signed-in tenant account is required to record a rental payment.");
+            }
+
+            var payment = new PaymentEntity
+            {
+                TenancyId = _paymentModel.TenancyId,
+                PayerId = tenantId,
+                Amount = _paymentModel.Amount,
+                Description = _paymentModel.Description,
+                Method = _paymentModel.Method,
+                Status = "SETTLED",
+                PaidAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow
+            };
+            await PropertyService.RecordPaymentAsync(payment);
+            _showPaymentModal = false;
+            await LoadTenantDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _paymentError = ex.Message;
+        }
+        finally
+        {
+            _isActing = false;
+        }
     }
 
     private void OpenTokenModal(UtilityMeterEntity meter)
