@@ -1,16 +1,18 @@
 # Rent Log
 
 Rent Log is a mobile-first rental record app built with Blazor and Supabase.
-Tenant and landlord authentication, issue history, evidence storage, rent
-records, and property data use the Supabase C# client and user-scoped access
-tokens. Issue history is append-only. The `register`, `invite`, and forgot
-password pages remain placeholders; create accounts in Supabase Auth for now.
+Tenant, landlord, and contractor workflows use the Supabase C# client and
+user-scoped access tokens. Issue history is append-only. The `register`,
+`invite`, and forgot password pages remain placeholders; create accounts in
+Supabase Auth for now.
 
 ## Project Status & Limitations Disclaimer
 
-> **Please Note:** This application is currently a **work-in-progress** and is **not fully functional**. 
-> 
-> * **The Contractor Portal is Incomplete:** Most notably, the contractor side of things—including the temporary password/PIN verification login flow, contractor quote submissions, job proof media uploads, and invoice approval workflows—is currently stubbed or partially implemented. Core tenant and landlord views are functional, but full end-to-end contractor workflows require further development.
+The contractor portal is functional. Contractors can sign in with a job PIN or
+temporary password, review assigned work orders, update job status, submit
+quotes, upload job proof media, and submit invoices. Contractor account
+registration is not available in the app; contractor profiles and access PINs
+must be set up through the configured backend.
 
 ---
 
@@ -26,9 +28,10 @@ The application is structured around three core user roles:
    - Manage properties (`units`) and active tenancies.
    - Monitor financial dashboards, incoming rent, and track operations.
    - Review and approve maintenance work orders and quotes.
-3. **Contractor Portal (`/contractor`)** *(Under Construction)*
-   - Specialized login flow intended for temporary job access via secure PINs/passwords.
-   - Job execution tracking, quote estimation, and invoice submissions.
+3. **Contractor Portal (`/contractor`)**
+   - Sign in with a job PIN or temporary access password.
+   - View assigned work orders and update their execution status.
+   - Submit quotes, upload job proof media, and submit invoices for review.
 
 ---
 
@@ -36,7 +39,7 @@ The application is structured around three core user roles:
 
 - **Framework:** .NET 10 / Blazor Web App
 - **Styling:** Tailwind CSS v4
-- **Database:** PostgreSQL (Supabase) via EF Core / Direct Client
+- **Database:** PostgreSQL (Supabase) via the Supabase C# client
 - **Authentication:** Role-Based Access Control (`TENANT`, `LANDLORD`, `CONTRACTOR`)
 
 ---
