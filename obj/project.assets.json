@@ -11,7 +11,7 @@
           "lib/net10.0/BirdMessenger.dll": {}
         }
       },
-      "Microsoft.AspNetCore.App.Internal.Assets/10.0.11": {
+      "Microsoft.AspNetCore.App.Internal.Assets/10.0.14": {
         "type": "package",
         "build": {
           "build/Microsoft.AspNetCore.App.Internal.Assets.props": {},
@@ -299,10 +299,10 @@
         "logo.png"
       ]
     },
-    "Microsoft.AspNetCore.App.Internal.Assets/10.0.11": {
-      "sha512": "tYYYBZsuF2DSz1I3hcfB8qC4nNekIKufkYZOJ2R28fNK3PkS7fJao/mIX5H84NH94UACZQ4dhvt8GDlkrJFwLg==",
+    "Microsoft.AspNetCore.App.Internal.Assets/10.0.14": {
+      "sha512": "T1IOYbID1msKjQEh684HebnN+Xnq/pocMXDukOMZtzzPTf9c4/30+/JndM/1txrqwuSYqWvLiAQWzu4U93cshw==",
       "type": "package",
-      "path": "microsoft.aspnetcore.app.internal.assets/10.0.11",
+      "path": "microsoft.aspnetcore.app.internal.assets/10.0.14",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -318,7 +318,7 @@
         "build/Microsoft.AspNetCore.App.Internal.Assets.targets",
         "buildMultiTargeting/Microsoft.AspNetCore.App.Internal.Assets.targets",
         "buildTransitive/Microsoft.AspNetCore.App.Internal.Assets.targets",
-        "microsoft.aspnetcore.app.internal.assets.10.0.11.nupkg.sha512",
+        "microsoft.aspnetcore.app.internal.assets.10.0.14.nupkg.sha512",
         "microsoft.aspnetcore.app.internal.assets.nuspec"
       ]
     },
@@ -634,38 +634,30 @@
   },
   "projectFileDependencyGroups": {
     "net10.0": [
-      "Microsoft.AspNetCore.App.Internal.Assets >= 10.0.11",
+      "Microsoft.AspNetCore.App.Internal.Assets >= 10.0.14",
       "Supabase >= 8.3.1"
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Zama\\.nuget\\packages\\": {},
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+    "C:\\Users\\Zama\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Zama\\Downloads\\RentLog\\RentLog- Z\\RentLog.csproj",
+      "projectUniqueName": "C:\\Users\\Zama\\Documents\\Source\\repos\\RentLog\\RentLog.csproj",
       "projectName": "RentLog",
-      "projectPath": "C:\\Users\\Zama\\Downloads\\RentLog\\RentLog- Z\\RentLog.csproj",
+      "projectPath": "C:\\Users\\Zama\\Documents\\Source\\repos\\RentLog\\RentLog.csproj",
       "packagesPath": "C:\\Users\\Zama\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Zama\\Downloads\\RentLog\\RentLog- Z\\obj\\",
+      "outputPath": "C:\\Users\\Zama\\Documents\\Source\\repos\\RentLog\\obj\\",
       "projectStyle": "PackageReference",
-      "fallbackFolders": [
-        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-      ],
       "configFilePaths": [
-        "C:\\Users\\Zama\\Downloads\\RentLog\\RentLog- Z\\NuGet.Config",
-        "C:\\Users\\Zama\\AppData\\Roaming\\NuGet\\NuGet.Config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        "C:\\Users\\Zama\\Documents\\Source\\repos\\RentLog\\NuGet.Config",
+        "C:\\Users\\Zama\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
       ],
       "sources": {
-        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -695,7 +687,7 @@
           "Microsoft.AspNetCore.App.Internal.Assets": {
             "suppressParent": "All",
             "target": "Package",
-            "version": "[10.0.11, )",
+            "version": "[10.0.14, )",
             "autoReferenced": true
           },
           "Supabase": {
@@ -722,7 +714,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.400/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.403/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.AspNetCore": "(,10.0.32767]",
           "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",

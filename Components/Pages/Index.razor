@@ -3,24 +3,181 @@
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
 
-<PageTitle>Rent Log</PageTitle>
-<div class="flex items-center justify-center min-h-screen bg-slate-50 text-slate-600">
-    <div class="text-center">
-        <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-600 border-t-transparent mb-3"></div>
-        <p class="text-sm font-medium">Entering Rent Log Portal...</p>
-    </div>
-</div>
+<PageTitle>RentLog | A better way to manage your rental</PageTitle>
+
+<main class="landing-page">
+        <header class="landing-header">
+            <a class="landing-brand" href="/" aria-label="RentLog home">
+                <img class="landing-brand-logo" src="/images/rentlog-logo.png" alt="RentLog" />
+                <span>RentLog</span>
+            </a>
+            <nav class="landing-nav" aria-label="Main navigation">
+                <a href="#features">Why RentLog</a>
+                <a href="#how-it-works">How it works</a>
+            </nav>
+            <div class="landing-header-actions">
+                <a class="landing-login-link" href="/login">Log in</a>
+                <a class="landing-button landing-button-small" href="/signup">
+                    Get started <span aria-hidden="true">↗</span>
+                </a>
+            </div>
+        </header>
+
+        <section class="landing-hero">
+            <div class="landing-hero-copy">
+                <div class="landing-eyebrow">
+                    <span class="landing-eyebrow-dot" aria-hidden="true"></span>
+                    Property management, made more human
+                </div>
+                <h1>Good renting starts with <span>good records.</span></h1>
+                <p class="landing-intro">
+                    Rent, repairs, and the little details in between — keep your rental life
+                    organized in one thoughtful place.
+                </p>
+                <div class="landing-hero-actions">
+                    <a class="landing-button" href="/signup">
+                        Create your account <span aria-hidden="true">→</span>
+                    </a>
+                    <a class="landing-button-secondary" href="/login">
+                        Log in to RentLog
+                    </a>
+                </div>
+                <div class="landing-reassurance">
+                    <span class="landing-avatar-stack" aria-hidden="true">
+                        <span> T </span><span> L </span><span> C </span>
+                    </span>
+                    <span>One clear view for tenants, landlords, and contractors</span>
+                </div>
+            </div>
+
+            <div class="landing-hero-art" aria-label="A preview of the RentLog rental dashboard">
+                <div class="landing-sun-shape" aria-hidden="true"></div>
+                <div class="landing-doodle landing-doodle-one" aria-hidden="true">✳</div>
+                <div class="landing-doodle landing-doodle-two" aria-hidden="true">✳</div>
+                <div class="landing-dashboard">
+                    <div class="landing-dashboard-top">
+                        <div>
+                            <span class="landing-dashboard-label">YOUR RENTAL, AT A GLANCE</span>
+                            <h2>Good morning, Alex <span aria-hidden="true">☀</span></h2>
+                        </div>
+                        <span class="landing-dashboard-avatar" aria-hidden="true">A</span>
+                    </div>
+                    <div class="landing-property">
+                        <div class="landing-property-photo" aria-hidden="true">
+                            <span class="landing-house-roof"></span>
+                            <span class="landing-house-body"></span>
+                            <span class="landing-house-window"></span>
+                            <span class="landing-house-door"></span>
+                        </div>
+                        <div class="landing-property-details">
+                            <span class="landing-property-type">YOUR HOME</span>
+                            <strong>Willow Creek House</strong>
+                            <span>Unit 4 · Greenpoint</span>
+                        </div>
+                        <span class="landing-status">All settled</span>
+                    </div>
+                    <div class="landing-dashboard-cards">
+                        <div class="landing-mini-card">
+                            <span class="landing-mini-icon rent-icon" aria-hidden="true">↗</span>
+                            <span class="landing-mini-label">Next rent</span>
+                            <strong>R 8,500</strong>
+                            <span class="landing-mini-note">Due 1 November</span>
+                        </div>
+                        <div class="landing-mini-card">
+                            <span class="landing-mini-icon repair-icon" aria-hidden="true">✓</span>
+                            <span class="landing-mini-label">Maintenance</span>
+                            <strong>All caught up</strong>
+                            <span class="landing-mini-note">Nothing needs attention</span>
+                        </div>
+                    </div>
+                    <div class="landing-activity">
+                        <div class="landing-activity-heading">
+                            <strong>Recent activity</strong>
+                            <span>View all</span>
+                        </div>
+                        <div class="landing-activity-row">
+                            <span class="landing-activity-check" aria-hidden="true">✓</span>
+                            <span><strong>Rent payment recorded</strong><small>October rent · Just now</small></span>
+                            <span class="landing-activity-amount">+ R 8,500</span>
+                        </div>
+                        <div class="landing-activity-row">
+                            <span class="landing-activity-wrench" aria-hidden="true">⌁</span>
+                            <span><strong>Kitchen tap fixed</strong><small>Maintenance · Yesterday</small></span>
+                            <span class="landing-activity-done">Done</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="landing-note-card">
+                    <span class="landing-note-icon" aria-hidden="true">✦</span>
+                    <span><strong>Everything in its place.</strong><small>Less chasing, more peace of mind.</small></span>
+                </div>
+            </div>
+        </section>
+
+        <section class="landing-feature-section" id="features">
+            <div class="landing-section-heading">
+                <span class="landing-section-kicker">A little more peace of mind</span>
+                <h2>All the moving parts,<br />moving together.</h2>
+                <p>RentLog keeps everyone on the same page, without another spreadsheet to manage.</p>
+            </div>
+            <div class="landing-feature-grid">
+                <article class="landing-feature-card">
+                    <span class="landing-feature-icon feature-rent" aria-hidden="true">↗</span>
+                    <h3>Rent, without the guesswork</h3>
+                    <p>Keep payment history and due dates clear, so everyone knows where things stand.</p>
+                </article>
+                <article class="landing-feature-card">
+                    <span class="landing-feature-icon feature-home" aria-hidden="true">⌂</span>
+                    <h3>Repairs that stay on track</h3>
+                    <p>Log an issue, follow its progress, and keep updates together from start to finish.</p>
+                </article>
+                <article class="landing-feature-card">
+                    <span class="landing-feature-icon feature-people" aria-hidden="true">♡</span>
+                    <h3>Everyone in the loop</h3>
+                    <p>Give tenants, landlords, and contractors a shared place for the details that matter.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="landing-bottom-cta" id="how-it-works">
+            <div>
+                <span class="landing-section-kicker">Make room for a better rental routine</span>
+                <h2>Start with a clearer picture.</h2>
+                <p>Set up your RentLog account and bring your rental details together.</p>
+            </div>
+            <a class="landing-button landing-button-light" href="/signup">
+                Get started with RentLog <span aria-hidden="true">→</span>
+            </a>
+        </section>
+
+        <footer class="landing-footer">
+            <a class="landing-brand" href="/" aria-label="RentLog home">
+                <img class="landing-brand-logo" src="/images/rentlog-logo.png" alt="RentLog" />
+                <span>RentLog</span>
+            </a>
+            <span>Rental living, a little more organized.</span>
+            <div><a href="/login">Log in</a><a href="/signup">Create account</a></div>
+        </footer>
+    </main>
 
 @code {
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        var user = await AuthService.GetCurrentUserAsync();
-        Navigation.NavigateTo(user?.Role switch
+        if (!firstRender)
         {
-            UserRole.Tenant => "/tenant",
-            UserRole.Landlord => "/landlord",
-            UserRole.Contractor => "/contractor",
-            _ => "/login"
-        }, replace: true);
+            return;
+        }
+
+        var user = await AuthService.GetCurrentUserAsync();
+        if (user is not null)
+        {
+            Navigation.NavigateTo(user.Role switch
+            {
+                UserRole.Tenant => "/tenant",
+                UserRole.Landlord => "/landlord",
+                UserRole.Contractor => "/contractor",
+                _ => "/login"
+            }, replace: true);
+        }
     }
 }
